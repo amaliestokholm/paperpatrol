@@ -252,8 +252,8 @@
 \newsavebox\boxFigOne
 
 % debugging macros
-% \renewcommand{\frame}{}   % using lines around frames for layout debugging
-\renewcommand{\frame}[1]{\colorbox{white}{#1}}   % using lines around frames for layout debugging
+ \renewcommand{\frame}{}   % using lines around frames for layout debugging
+%\renewcommand{\frame}[1]{\colorbox{white}{#1}}   % using lines around frames for layout debugging
 
 % Often used journal defined commands
 \providecommand{\arcsec}{\hbox{$^{\prime\prime}$}}
@@ -346,66 +346,94 @@
 
 
 % test orientation
-\ifnum\pgfmathresult=1\relax% 
+\ifnum\pgfmathresult=1\relax%
 % ------------------------------------------------------------------ {landscape}
-\def\maxheight{0.25\paperheight}
-\def\maxwidth{\textwidth}
-\frame{%
-  \begin{minipage}[t][0.5\Highttempl][t]{2\Widthtempl}%
-    \vspace*{\fill}
-    {\begin{center}\figone\end{center}}  % put contents here
-    \capone
-    \vspace*{\fill} \ 
-  \end{minipage}}% 
-\par
-\fbox{%
-  \begin{minipage}[t][0.49\Highttempl][t]{2\Widthtempl+\gap}
-    \frame{\ %
-      \begin{minipage}[t][0.5\Highttempl][t]{\Widthtempl-\gap}
-        \vspace*{\fill}
-	{\begin{center}\figtwo\end{center}}
-        \captwo
-	\vspace*{\fill} \ 
-      \end{minipage}}
-    \frame{\ %
-      \begin{minipage}[t][0.5\Highttempl][t]{\Widthtempl-\gap}
-	   \vspace*{\fill}
-           {\begin{center}\figthree\end{center}}
-	   \capthree
-	   \vspace*{\fill}
-	 \end{minipage}}
-	\end{minipage}}
+	\def\maxheight{0.25\paperheight}
+	\def\maxwidth{\textwidth}
+	\frame{%
+		\begin{minipage}[t][0.5\Highttempl][t]{2\Widthtempl}%
+		\vspace*{\fill}%
+		{\begin{center}\figone\end{center}}  % put contents here
+	         \capone
+	         \vspace*{\fill} \
+		\end{minipage}%
+		}%
+	\par
+	\ifx\figthree\empty
+	\frame{%
+		\begin{minipage}[t][0.5\Highttempl][t]{2\Widthtempl}%
+		\vspace*{\fill}%
+		{\begin{center}\figtwo\end{center}}  % put contents here
+		\captwo
+		\vspace*{\fill} \
+		\end{minipage}%
+		}%
+	\else
+	\fbox{%
+		\begin{minipage}[t][0.49\Highttempl][t]{2\Widthtempl+\gap}%
+		\frame{\ %
+			\begin{minipage}[t][0.5\Highttempl][t]{\Widthtempl-\gap}
+			\vspace*{\fill}%
+			{\begin{center}\figtwo\end{center}}
+			\captwo
+			\vspace*{\fill} \
+			\end{minipage}%
+			}
+		 \frame{\ %
+		        \begin{minipage}[t][0.5\Highttempl][t]{\Widthtempl-\gap}
+			\vspace*{\fill}%
+			{\begin{center}\figthree\end{center}}
+			\capthree
+			\vspace*{\fill}
+			 \end{minipage}%
+			}
+		\end{minipage}%
+		}
+	\fi
 \else
 % ------------------------------------------------------------------ {portrait}
 	\def\maxheight{0.4\paperheight}
 	\def\maxwidth{\textwidth}
-	\frame{%
-	\begin{minipage}[b][1\Highttempl][t]{1\Widthtempl}%
-         \vspace*{\fill}
-	 {\begin{center}\figone\end{center}}  % put contents here
-         \capone
-         \vspace*{\fill} \ 
+	\frame{
+		\begin{minipage}[b][1\Highttempl][t]{1\Widthtempl}%
+		 \vspace*{\fill}
+		 {\begin{center}\figone\end{center}}  % put contents here
+		 \capone
+		 \vspace*{\fill} \ 
 		\end{minipage}}%
+	\ifx\figthree\empty
+	\fbox{%
+		\begin{minipage}[b][1\Highttempl][t]{1\Widthtempl}%
+		 \vspace*{\fill}
+		 {\begin{center}\figtwo\end{center}}  % put contents here
+		 \captwo
+		 \vspace*{\fill} \
+		\end{minipage}}%
+	\else
 	\fbox{%
 		\def\maxheight{0.3\paperheight}
 		\begin{minipage}[b][1\Highttempl][t]{\Widthtempl+1\gap}
 			\frame{\ %
-        \begin{minipage}[t][0.5\Highttempl][t]{\Widthtempl}
-	\vspace*{\fill}
-	  {\begin{center}\figtwo\end{center}}
-          \captwo
-         \vspace*{\fill} \ 
-			\end{minipage}}
+				\begin{minipage}[t][0.5\Highttempl][t]{\Widthtempl}
+					\vspace*{\fill}
+					{\begin{center}\figtwo\end{center}}
+					\captwo
+					\vspace*{\fill} \
+				\end{minipage}%
+				}
 			\frame{\ %
-		\begin{minipage}[t][0.5\Highttempl][t]{\Widthtempl}
-				  \vspace*{\fill}
-		{\begin{center}\figthree\end{center}}
-            \capthree
-            \vspace*{\fill} \ 
-        \end{minipage}}
-	\end{minipage}}
+				\begin{minipage}[t][0.5\Highttempl][t]{\Widthtempl}
+					\vspace*{\fill}
+					{\begin{center}\figthree\end{center}}
+					\capthree
+					\vspace*{\fill} \
+				\end{minipage}
+				}
+		\end{minipage}
+		}
+	\fi
 \fi
-			  
+
 % add bottom text -------------------------------------------------------------------
 % \frame{
 %   \begin{minipage}[b][0.05\Highttempl][b]{2\Widthtempl}
