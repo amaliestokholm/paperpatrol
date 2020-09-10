@@ -985,7 +985,8 @@ class DocumentSource(Document):
         selected = None
         for e, fname in enumerate(fnames):
             with open(fname, 'r', errors="surrogateescape") as finput:
-                if 'documentclass' in finput.read():
+                s = finput.read()
+                if ('documentclass' in s) and (r'\title' in s):
                     selected = e, fname
                     break
         if debug:
@@ -1421,15 +1422,14 @@ def check_required_words(source, word_list=[], verbose=False):
 
     Test is case insensitive but all words must appear
     """
-    check = True
     for word in word_list:
         if (word in source._code) or (word.lower() in source._code):
-            check = check and True
+            pass
         else:
             if verbose:
                 return ("'{0:s}' keyword not found.".format(word))
             return False
-    return check
+    return True
 
 
 def running_options():
