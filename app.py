@@ -26,7 +26,6 @@ import qrcode
 #directories
 __ROOT__ = '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
 
-
 PY3 = sys.version_info[0] > 2
 
 if PY3:
@@ -56,12 +55,10 @@ def raise_or_warn(exception, limit=5, file=sys.stdout, debug=False):
         raise exception
     else:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        color_print('*** print_tb', 'green')
-        traceback.print_tb(exc_traceback, limit=limit, file=file)
         print(exception, '\n')
 
 
-def balanced_braces(args):
+def balanced_braces(args, limit=None):
     """ Find tokens between {}
 
     Parameters
@@ -74,32 +71,46 @@ def balanced_braces(args):
     parts: seq
         extracted parts
     """
-    if isinstance(args, basestring):
-        return balanced_braces([args])
     parts = []
-    for arg in args:
-        if '{' not in arg:
+    if isinstance(args, list):
+        for x in args:
+            parts += balanced_braces(x)
+        return parts[:limit]
+    if isinstance(args, bytes):
+        raise TypeError("str is required, not bytes")
+    assert isinstance(args, str)
+    it = re.finditer(r'[{}]|\\.|%.*', args)
+    parts = []
+    num = 0
+    current_start = None
+    for mo in it:
+        s = mo.group(0)
+        if s[0] == "%":
+            # Comment - skip
             continue
-        chars = []
-        rest = []
-        num = 0
-        for char in arg:
-            if char == '{':
-                if num > 0:
-                    chars.append(char)
-                num += 1
-            elif char == '}':
-                num -= 1
-                if num > 0:
-                    chars.append(char)
-                elif num == 0:
-                    parts.append(''.join(chars).lstrip().rstrip())
-                    chars = []
-            elif num > 0:
-                chars.append(char)
-            else:
-                rest.append(char)
-    return parts
+        if s == "{":
+            if num == 0:
+                # Start argument
+                assert current_start is None
+                current_start = mo.end()
+            num += 1
+            continue
+        if s == "}":
+            if num == 0:
+                raise Exception("parse error: unmatched '}' at position %s" % mo.start())
+            num -= 1
+            if num == 0:
+                # End argument
+                assert current_start is not None
+                parts.append(args[current_start : mo.start()])
+                if limit is not None and len(parts) >= limit:
+                    return parts[:limit]
+                current_start = None
+            continue
+    if num > 0:
+        raise Exception("parse error: unmatched '{' at position %s" % current_start)
+    return parts[:limit]
+
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -278,7 +289,7 @@ def color_print(*args, **kwargs):
 
 def tex_escape(text):
     """ Escape latex special characters in one string
-    
+
         Parameters
         ----------
         text: str
@@ -336,7 +347,6 @@ def get_latex_macros(data):
     defs = defs + [k for k in re.compile(r'\\graphicspath.*').findall(header)
                    if len(balanced_braces(k)) > 0]
     macros += '\n'.join(defs)
-    print('*** Found macros and definitions in the header: ')
     return macros
 
 
@@ -344,19 +354,34 @@ def clear_comments(data):
     """ clean text from any comment """
     lines = []
     for line in data.splitlines():
-        try:
-            start = list(re.compile(r'(?<!\\)%').finditer(line))[0].span()[0]
-            lines.append(line[:start])
-        except IndexError:
-            lines.append(line)
+        mo = re.match(r'^((?:\\.|[^\\%]|\\$)*)(%.*)?$', line)
+        if mo is None:
+            raise Exception("regex failed %r" % (line,))
+        lines.append(mo.group(1))
     return '\n'.join(lines)
 
 
 def get_latex_figures(data):
     """ Extract figure declarations """
-    starts = [k.span()[0] for k in re.compile(r'(?<!%).*begin{figure').finditer(data)]
-    ends = [k.span()[1] for k in re.compile(r'(?<!%).*end{figure.*').finditer(data)]
-    figures = [data[a: b] for a, b in zip(starts, ends)]
+    it = re.finditer(r'\\\\|(\\(begin|end){figure\*?})', data)
+    open_figure = None
+    figures = []
+    for mo in it:
+        if mo.group(0) == "\\\\":
+            continue
+        begin_or_end = mo.group(2)
+        assert begin_or_end in ("begin", "end")
+        if begin_or_end == "begin":
+            # \begin{figure}
+            if open_figure is not None:
+                raise Exception("Unsupported: begin{figure} inside begin{figure}")
+            open_figure = mo.start(1)
+        else:
+            # \end{figure}
+            if open_figure is None:
+                raise Exception("Unsupported: end{figure} without matching begin{figure}")
+            figures.append(data[open_figure : mo.end(1)])
+            open_figure = None
     return figures
 
 
@@ -381,21 +406,19 @@ def parse_command(command, code, tokens=1):
         found arguments
     """
     safe = command.replace('\\', '')
-    options = re.findall(safe + '\s*\[.*\]', code)
-    try:
-        where = list(re.compile(r'\\' + safe).finditer(code))[0].span()[1]
-        if options:  # empty sequences are False
-            opt = options[0]
-            code = code.replace(opt.replace(command, ''), '')
-        next_token = balanced_braces(code[where:])[:tokens]
-        if tokens == 1:
-            return next_token[0]
-        return next_token
-    except Exception as e:
-        print("parse_command({0:s}, code, tokens={1:d}) error".format(command,
-            tokens))
-        print(e)
-        raise e
+    # Match \<safe> followed by an optional argument
+    pattern = r'\\%s\s*(?:\[[^]]*\]\s*)?' % safe
+    mo = re.search(pattern, code)
+    if mo is None:
+        raise IndexError
+    # where: position where the optional argument ends
+    where = mo.end()
+    next_token = balanced_braces(code[where:])[:tokens]
+    if not next_token:
+        print("parse_command(%r) did not find any arguments" % (command,))
+    if tokens == 1:
+        return next_token[0]
+    return next_token
 
 
 def parse_command_multi(command, code, tokens=1):
@@ -418,13 +441,13 @@ def parse_command_multi(command, code, tokens=1):
     next_token: sequence or str
         found arguments
     """
-    if command == '\\fig':
-        safe = r'FIG'
-        code = code.replace(r'\fig{', r'\FIG{')
-    else:
-        safe = command.replace('\\', '')
-    pieces = [code[r.start()-1:] for r in re.finditer(safe, code)]
-    ret = [parse_command(safe, pk, tokens=tokens) for pk in pieces]
+    # command is a TeX command with or without leading backslash, e.g. input or \author
+    assert re.match(r"^\\?[a-z]+$", command), command
+    # Insert backslash in front of command if missing
+    command = "\\" + command.strip("\\")
+    pieces = [code[r.start():] for r in re.finditer(re.escape(command), code)]
+    ret = [parse_command(command, pk, tokens=tokens) for pk in pieces]
+    assert len(ret) == code.count(command)
     return ret
 
 
@@ -815,7 +838,7 @@ class ExportPDFLatexTemplate(object):
 """
 
     compiler = r"TEXINPUTS='{0:s}/deprecated_tex:' pdflatex ".format(__ROOT__)
-    compiler_options = r" -enable-write18 -shell-escape -interaction=nonstopmode "
+    compiler_options = r" -interaction=errorstopmode "
 
     def short_authors(self, document):
         """ Short author """
@@ -889,7 +912,7 @@ class DocumentSource(Document):
         self.directory = directory
         self.outputname = self.fname[:-len('.tex')] + '_cleaned.tex'
 
-    def _parse_of_import_package(self, data, directory=''):
+    def _parse_of_import_package(self, data, directory='', debug=False):
         if not r'usepackage{import}' in data:
             return data
         command = 'import'
@@ -898,14 +921,16 @@ class DocumentSource(Document):
             if directory[-1] != '/':
                 directory = directory + '/'
         if len(inputs) > 0:
-            print('*** Found document inclusions using import ')
+            if debug:
+                print('*** Found document inclusions using import ')
             new_data = []
             prev_start, prev_end = 0, 0
             for match in inputs:
                 try:
                     fname = match.group().replace(r'\import', '').strip()
                     fname = fname.replace('{', '').replace('}', '').replace('.tex', '')   # just in case
-                    print('      input command: ', fname)
+                    if debug:
+                        print('      input command: ', fname)
                     try:
                         with open(directory + fname + '.tex', 'r', errors="surrogateescape") as fauxilary:
                             auxilary = fauxilary.read()
@@ -923,21 +948,23 @@ class DocumentSource(Document):
         else:
             return data
 
-    def _expand_auxilary_files(self, data, directory='', command='input'):
+    def _expand_auxilary_files(self, data, directory='', command='input', debug=False):
         # inputs
-        inputs = list(re.compile(r'\\{0:s}.*'.format(command)).finditer(data))
+        inputs = list(re.finditer(r'\\%s\{.*' % re.escape(command), data))
         if len(directory):
             if directory[-1] != '/':
                 directory = directory + '/'
         if len(inputs) > 0:
-            print('*** Found document inclusions ')
+            if debug:
+                print('*** Found document inclusions ')
             new_data = []
             prev_start, prev_end = 0, 0
             for match in inputs:
                 try:
-                    fname = match.group().replace(r'\\' + command, '').strip()
+                    fname = match.group().replace('\\' + command, '').strip()
                     fname = fname.replace('{', '').replace('}', '').replace('.tex', '')   # just in case
-                    print('      input command: ', fname)
+                    if debug:
+                        print('      input command: ', fname)
                     with open(directory + fname + '.tex', 'r', errors="surrogateescape") as fauxilary:
                         auxilary = fauxilary.read()
                     start, end = match.span()
@@ -951,23 +978,19 @@ class DocumentSource(Document):
         else:
             return data
 
-    def _auto_select_main_doc(self, fnames):
+    def _auto_select_main_doc(self, fnames, debug=False):
         if (len(fnames) == 1):
             return fnames[0]
 
-        print('multiple tex files')
         selected = None
         for e, fname in enumerate(fnames):
             with open(fname, 'r', errors="surrogateescape") as finput:
                 if 'documentclass' in finput.read():
                     selected = e, fname
                     break
-        print("Found main document in: ", selected)
+        if debug:
+            print("Found main document: ", selected)
         if selected is not None:
-            print("Found main document in: ", selected[1])
-            print(e, fname)
-        if selected is not None:
-            print("Found main document in: ", selected[1])
             return selected[1]
         else:
             print('Could not locate the main document automatically. Little help please!')
@@ -998,7 +1021,7 @@ class DocumentSource(Document):
                 template.compiler, template.compiler_options)
         if not os.path.isfile(self.fname.replace('.tex', '.aux')):
             outputname = self.fname.split('/')[-1]
-            subprocess.call(compiler_command + outputname, shell=True)
+            subprocess.call(compiler_command + outputname, shell=True, stdin=subprocess.DEVNULL)
 
         # get the references compiled
         input_aux = self.fname.replace('.tex', '.aux')
@@ -1010,12 +1033,12 @@ class DocumentSource(Document):
                         if (('cite' in line) or ('citation' in line) or
                                 ('label' in line) or ('toc' in line)):
                             fout.write(line.encode('utf-8', 'surrogateescape').decode('utf-8', 'replace'))
-        except:
+        except Exception:
             pass
 
         # compile output
         outputname = self.outputname.split('/')[-1]
-        subprocess.call(compiler_command + outputname, shell=True)
+        subprocess.call(compiler_command + outputname, shell=True, stdin=subprocess.DEVNULL)
 
 
 class ArxivAbstractHTMLParser(HTMLParser):
@@ -1288,6 +1311,7 @@ def get_catchup_papers(since=None, skip_replacements=False, appearedon=None):
         # dd/mm/yyyy
         _since = datetime.strptime(since, '%d/%m/%Y')
 
+    print('after', _since)
     url = "https://arxiv.org/catchup?syear={year:d}&smonth={month:d}&sday={day:d}&num=1000&archive=astro-ph&method=without"
     html = urlopen(url.format(day=_since.day, 
                               month=_since.month, 
@@ -1299,7 +1323,7 @@ def get_catchup_papers(since=None, skip_replacements=False, appearedon=None):
     return papers
 
 
-def get_mitarbeiter(source=__ROOT__+'/mitarbeiter.txt'):
+def get_mitarbeiter(source=__ROOT__+'/medarbejder.txt'):
     """ returns the list of authors of interests.
     Needed to parse the input list to get initials and last name.
     This may not work all the time. The best would be to have the proper names
@@ -1307,7 +1331,7 @@ def get_mitarbeiter(source=__ROOT__+'/mitarbeiter.txt'):
 
     Returns
     -------
-    mitarbeiter: list(str)
+    medarbejder: list(str)
        authors to look for
     """
     with open(source, errors="surrogateescape") as fin:
@@ -1412,7 +1436,7 @@ def running_options():
 
     opts = (
             ('-s', '--source', dict(dest="sourcedir", help="Use an existing source directory", default='', type='str')),
-            ('-m', '--mitarbeiter', dict(dest="hl_authors", help="List of authors to highlight (co-workers)", default=__ROOT__+'/mitarbeiter.txt', type='str')),
+            ('-m', '--mitarbeiter', dict(dest="hl_authors", help="List of authors to highlight (co-workers)", default=__ROOT__+'/medarbejder.txt', type='str')),
             ('-i', '--id', dict(dest="identifier", help="Make postage of a single paper given by its arxiv id", default='None', type='str')),
             ('-a', '--authors', dict(dest="hl_authors", help="Highlight specific authors", default='None', type='str')),
             ('-d', '--date', dict(dest="date", help="Impose date on the printouts (e.g., today)", default='', type='str')),
@@ -1451,7 +1475,7 @@ def main(template=None):
     catchup_since = options.get('since', None)
     select_main = options.get('select_main', False)
 
-    mitarbeiter_list = options.get('mitarbeiter', __ROOT__+'/mitarbeiter.txt')
+    mitarbeiter_list = options.get('mitarbeiter', __ROOT__+'/medarbejder.txt')
     mitarbeiter = get_mitarbeiter(mitarbeiter_list)
 
     if sourcedir not in (None, ''):
@@ -1462,10 +1486,11 @@ def main(template=None):
         name = paper.outputname.replace('.tex', '.pdf').split('/')[-1]
         shutil.move(sourcedir + '/' + name, paper.identifier + '.pdf')
         print("PDF postage:", paper.identifier + '.pdf' )
-        return 
+        return
     elif identifier in (None, '', 'None'):
+        print("main", repr(catchup_since))
         if catchup_since not in (None, '', 'None', 'today'):
-            papers = get_catchup_papers(skip_replacements=True)
+            papers = get_catchup_papers(since=catchup_since, skip_replacements=True)
         else:
             papers = get_new_papers(skip_replacements=True)
         keep, _ = filter_papers(papers, mitarbeiter)
@@ -1474,7 +1499,6 @@ def main(template=None):
         keep, _ = highlight_papers(papers, mitarbeiter)
 
     for paper in keep:
-        print(paper)
         try:
             paper.make_postage(template=template)
         except Exception as error:
