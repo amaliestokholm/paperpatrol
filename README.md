@@ -1,12 +1,11 @@
 # arxiv_on_deck
-[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/mfouesneau/arxiv_on_deck/master)
-
 This repository is a quick and dirty version of the Arxiver.
 
 The code goes through the new specific author lists and compiles a 1 page summary with figures
 A sort of Arxiver for institutes or groups
 
-And example is given in the example directory
+This is build specifically for the SAC and iSIMBA group at Aarhus University.
+This also contains scripts to compile the 'automated' Wordpress blogposts for isimba.dk
 
 ## Quick Start
 
