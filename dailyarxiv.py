@@ -18,12 +18,11 @@ def main(date=None,):
 
     print('Checks arxiv')
     # run arxiv_on_deck for sac
-    non_issues, matched_authors = arxiv_on_deck.main(
+    non_issues = arxiv_on_deck.main(
         template=arxiv_on_deck.SACTemplate(),
         options=dict(
             #date=date,
-            #since='01/09/2020'
-            id="2008.12397"
+            since='01/06/2020'
         ),
     )
     if len(non_issues) == 0:
@@ -31,7 +30,7 @@ def main(date=None,):
     else:
         print('\nScience! Print the papers and show the world!')
         isimbagroup = np.loadtxt('isimbagroup.txt', dtype='str')
-        for name, author, pid in matched_authors:
+        for pid, author in non_issues:
             print(author)
             if author.split()[-1] in isimbagroup:
                 print('%s is in paper %s' % (author, pid))
