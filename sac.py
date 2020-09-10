@@ -4,6 +4,7 @@ A quick and dirty parser for ArXiv
 ===================================
 
 """
+import os
 import sys,time
 import traceback
 from app import (ExportPDFLatexTemplate, DocumentSource, raise_or_warn,\
@@ -49,9 +50,11 @@ class SACTemplate(ExportPDFLatexTemplate):
         for fname in figure.files:
             # as latex parses these lines first, one must prevent latex to find
             # dots in figure filenames apart from the extension 
-            rootname, extension = '.'.join(fname.split('.')[:-1]), fname.split('.')[-1]
+            if "." in fname:
+                rootname, extension = os.path.splitext(fname)
+                fname = "{%s}%s" % (rootname, extension)
             fig += r"    \includegraphics[width=\maxwidth, height=\maxheight,keepaspectratio]{"
-            fig += r"{" + rootname + r"}." + extension + r"}\\" + "\n"
+            fig += fname + "}%\n"
         if len(figure.files) > 1:
             fig = fig.replace(r'\maxwidth', '{0:0.1f}'.format(0.9 * 1. / len(figure.files)) + r'\maxwidth')
         caption = r"""    \caption{Fig. """ + str(figure._number) + """: """ + str(figure.caption) + r"""}"""
@@ -195,7 +198,7 @@ def main(template=None, options=None):
     for issue in non_issues:
         color_print("[{0:s}] {1:s}".format(*issue), 'cyan')
 
-    return non_issues, matched_authors
+    return non_issues
 
 
 if __name__ == "__main__":
