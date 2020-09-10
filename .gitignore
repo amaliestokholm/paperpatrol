@@ -103,3 +103,5 @@ ENV/
 # local temps
 tmp/
 .DS_Store
+
+*.pdf
