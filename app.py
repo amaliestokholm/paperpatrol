@@ -58,7 +58,7 @@ def raise_or_warn(exception, limit=5, file=sys.stdout, debug=False):
         print(exception, '\n')
 
 
-def balanced_braces(args, limit=None):
+def balanced_braces(args, limit=None, strict=False):
     """ Find tokens between {}
 
     Parameters
@@ -97,7 +97,9 @@ def balanced_braces(args, limit=None):
             continue
         if s == "}":
             if num == 0:
-                raise Exception("parse error: unmatched '}' at position %s" % mo.start())
+                if strict:
+                    raise Exception("parse error: unmatched '}' at position %s" % mo.start())
+                continue
             num -= 1
             if num == 0:
                 # End argument
@@ -107,7 +109,7 @@ def balanced_braces(args, limit=None):
                     return parts[:limit]
                 current_start = None
             continue
-    if num > 0:
+    if strict and num > 0:
         raise Exception("parse error: unmatched '{' at position %s" % current_start)
     return parts[:limit]
 
