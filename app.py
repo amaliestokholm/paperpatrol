@@ -840,7 +840,7 @@ class ExportPDFLatexTemplate(object):
 """
 
     compiler = r"TEXINPUTS='{0:s}/deprecated_tex:' pdflatex ".format(__ROOT__)
-    compiler_options = r" -interaction=errorstopmode "
+    compiler_options = r" -interaction=batchmode "
 
     def short_authors(self, document):
         """ Short author """
@@ -1316,8 +1316,8 @@ def get_catchup_papers(since=None, skip_replacements=False, appearedon=None):
 
     print('after', _since)
     url = "https://arxiv.org/catchup?syear={year:d}&smonth={month:d}&sday={day:d}&num=1000&archive=astro-ph&method=without"
-    html = urlopen(url.format(day=_since.day, 
-                              month=_since.month, 
+    html = urlopen(url.format(day=_since.day,
+                              month=_since.month,
                               year=_since.year)).read().decode('utf-8')
 
     parser = ArxivListHTMLParser(skip_replacements=skip_replacements)

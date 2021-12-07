@@ -1,5 +1,6 @@
 Christensen-Dalsgaard
 Aguirre
+Børsen-Koch
 Albrecht
 Finster
 Frandsen
@@ -14,6 +15,7 @@ Essen
 Bellinger
 Lundkvist
 Mosumgaard
+Rørsted
 Spitoni
 Verma
 Borre
@@ -26,3 +28,4 @@ Brogaard
 Andersen
 Handberg
 Knudsen
+Zhou
