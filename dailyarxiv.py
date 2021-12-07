@@ -4,6 +4,7 @@ import time
 import numpy as np
 
 import sac as arxiv_on_deck
+import asterochronometry as arxiv_on_deck2
 import arxivposts
 
 
@@ -42,6 +43,16 @@ def main():
                 if a in isimbagroup:
                     print('%s is in paper %s' % (author, pid))
                     arxivposts.main(pid)
+    print('Checks arxiv')
+    # run arxiv_on_deck for asterochronometry group
+    non_issues = arxiv_on_deck2.main(
+        template=arxiv_on_deck2.asteroTemplate(),
+        options=dict(
+            date=date,
+            since=args.since,
+            identifier=args.identifier
+        ),
+    )
 
 if __name__ == "__main__":
     main()
