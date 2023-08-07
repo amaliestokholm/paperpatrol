@@ -986,6 +986,8 @@ class DocumentSource(Document):
 
         selected = None
         for e, fname in enumerate(fnames):
+            if 'mnras_guide' in fname:
+                continue
             with open(fname, 'r', errors="surrogateescape") as finput:
                 s = finput.read()
                 if ('documentclass' in s) and (r'\title' in s):
@@ -1217,9 +1219,13 @@ class ArXivPaper(object):
             if os.path.isdir(directory):
                 shutil.rmtree(directory)
             print("extracting tarball...")
+            print('here')
             tar.extractall(directory)
+            print('tar')
             document = DocumentSource(directory, autoselect=autoselect)
+            print(document)
             self.get_abstract()
+            print('abstract')
             try:
                 document.authors
             except Exception as error:
