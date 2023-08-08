@@ -5,18 +5,18 @@ A quick and dirty parser for ArXiv
 
 """
 import os
-import sys,time
+import sys
+import time
+import inspect
 import traceback
 from app import (ExportPDFLatexTemplate, DocumentSource, raise_or_warn,\
         color_print, __DEBUG__)
-import os
-import inspect
-#directories
-__ROOT__ = '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
 
-# Cron jobs need absolute file paths
+#__ROOT__ = '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
+__ROOT__ = os.path.abspath('.')
 
-tpl = __ROOT__ + '/daily.tpl'
+tpl = os.path.join(__ROOT__, 'templates/daily.tpl')
+
 
 class asteroTemplate(ExportPDFLatexTemplate):
     """ Template used at MPIA
