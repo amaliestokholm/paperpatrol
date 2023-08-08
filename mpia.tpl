@@ -299,7 +299,7 @@
                 \begin{wrapfigure}{r}{0.1\textwidth}
                 \vspace{-.4cm}
                 \hspace{-.2cm}
-                \includegraphics[width=0.1\textwidth]{qrcode.pdf}
+                \includegraphics[width=0.1\textwidth]{qrcode.png}
                 \vspace{-.5cm}
                 \end{wrapfigure}
 
