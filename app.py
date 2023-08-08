@@ -50,7 +50,7 @@ else:
 
 def make_qrcode(identifier):
     qr = qrcode.QRCode(border=0, error_correction=qrcode.constants.ERROR_CORRECT_H)
-    qr.add_data(f"https://www.arxiv.org/abs/{str(identifier)}")
+    qr.add_data(f"https://arxiv.org/abs/{str(identifier)}")
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     qrfig = os.path.join(tmpdir, "qrcode.png")
