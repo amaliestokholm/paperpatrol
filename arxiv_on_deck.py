@@ -100,7 +100,6 @@ class dailyTemplate(ExportPDFLatexTemplate):
     which shows 3 figures and adapt the layout depending of figure aspect ratios
     """
 
-    compiler = "pdflatex "
     compiler_options = " -interaction=errorstopmode "
     template = tpl
 
