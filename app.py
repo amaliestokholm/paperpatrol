@@ -1433,7 +1433,7 @@ def get_catchup_papers(since=None, skip_replacements=False, appearedon=None):
     return papers
 
 
-def get_mitarbeiter(source=__ROOT__ + "/medarbejder.txt"):
+def get_coworker(source=__ROOT__ + "/coworker.txt"):
     """returns the list of authors of interests.
     Needed to parse the input list to get initials and last name.
     This may not work all the time. The best would be to have the proper names
@@ -1441,11 +1441,11 @@ def get_mitarbeiter(source=__ROOT__ + "/medarbejder.txt"):
 
     Returns
     -------
-    medarbejder: list(str)
+    coworker: list(str)
        authors to look for
     """
     with open(source, errors="surrogateescape") as fin:
-        mitarbeiter = []
+        coworker = []
         for name in fin:
             if name[0] != "#":  # Comment line
                 names = name.split()
@@ -1457,8 +1457,8 @@ def get_mitarbeiter(source=__ROOT__ + "/medarbejder.txt"):
                         rest = name[0] + "."
                     shortname.append(rest)
                 shortname.append(names[-1])
-                mitarbeiter.append(" ".join(shortname))
-    return list(sorted(set(mitarbeiter)))
+                coworker.append(" ".join(shortname))
+    return list(sorted(set(coworker)))
 
 
 def highlight_papers(papers, fname_list):
@@ -1556,11 +1556,11 @@ def running_options():
         ),
         (
             "-m",
-            "--mitarbeiter",
+            "--coworker",
             dict(
                 dest="hl_authors",
                 help="List of authors to highlight (co-workers)",
-                default=__ROOT__ + "/medarbejder.txt",
+                default=__ROOT__ + "/coworker.txt",
                 type="str",
             ),
         ),
@@ -1656,13 +1656,13 @@ def main(template=None):
     catchup_since = options.get("since", None)
     select_main = options.get("select_main", False)
 
-    mitarbeiter_list = options.get("mitarbeiter", __ROOT__ + "/medarbejder.txt")
-    mitarbeiter = get_mitarbeiter(mitarbeiter_list)
+    coworker_list = options.get("coworker", __ROOT__ + "/coworker.txt")
+    coworker = get_coworker(coworker_list)
 
     if sourcedir not in (None, ""):
         paper = DocumentSource(sourcedir, autoselect=(not select_main))
         paper.identifier = sourcedir
-        keep, _ = highlight_papers([paper], mitarbeiter)
+        keep, _ = highlight_papers([paper], coworker)
         paper.compile(template=template)
         name = paper.outputname.replace(".tex", ".pdf").split("/")[-1]
         shutil.move(sourcedir + "/" + name, paper.identifier + ".pdf")
@@ -1674,7 +1674,7 @@ def main(template=None):
             papers = get_catchup_papers(since=catchup_since, skip_replacements=True)
         else:
             papers = get_new_papers(skip_replacements=True)
-        keep, _ = filter_papers(papers, mitarbeiter)
+        keep, _ = filter_papers(papers, coworker)
     else:
         papers = [
             ArXivPaper(
@@ -1682,7 +1682,7 @@ def main(template=None):
                 appearedon=check_date(options.get("date")),
             )
         ]
-        keep, _ = highlight_papers(papers, mitarbeiter)
+        keep, _ = highlight_papers(papers, coworker)
 
     for paper in keep:
         try:
