@@ -1107,48 +1107,68 @@ class DocumentSource(Document):
         if template is None:
             template = ExportPDFLatexTemplate()
 
-        with open(self.outputname, "w") as out:
-            data = template.apply_to_document(self)
-            out.write(
-                data.encode("utf-8", "surrogateescape").decode("utf-8", "replace")
-            )
+        data = template.apply_to_document(self)
 
-        # compile source to get aux data if necessary
-        compiler_command = "cd {0:s}; {1:s} {2:s} ".format(
-            self.directory, template.compiler, template.compiler_options
+        compile_template_with_aux_from_source(
+            compiler=template.compiler,
+            compiler_options=template.compiler_options,
+            directory=self.directory,
+            fname=self.fname,
+            outputname=self.outputname,
+            data=data,
         )
-        if not os.path.isfile(self.fname.replace(".tex", ".aux")):
-            outputname = self.fname.split("/")[-1]
-            subprocess.call(
-                compiler_command + outputname, shell=True, stdin=subprocess.DEVNULL
-            )
 
-        # get the references compiled
-        input_aux = self.fname.replace(".tex", ".aux")
-        output_aux = self.outputname.replace(".tex", ".aux")
-        try:
-            with open(output_aux, "w+") as fout:
-                with open(input_aux, "r", errors="surrogateescape") as fin:
-                    for line in fin:
-                        if (
-                            ("cite" in line)
-                            or ("citation" in line)
-                            or ("label" in line)
-                            or ("toc" in line)
-                        ):
-                            fout.write(
-                                line.encode("utf-8", "surrogateescape").decode(
-                                    "utf-8", "replace"
-                                )
-                            )
-        except Exception:
-            pass
 
-        # compile output
-        outputname = self.outputname.split("/")[-1]
+def compile_template_with_aux_from_source(
+    compiler: str,
+    compiler_options: str,
+    directory: str,
+    fname: str,
+    outputname: str,
+    data: str,
+) -> None:
+
+    with open(outputname, "w") as out:
+        out.write(
+            data.encode("utf-8", "surrogateescape").decode("utf-8", "replace")
+        )
+
+    # compile source to get aux data if necessary
+    compiler_command = "cd {0:s}; {1:s} {2:s} ".format(
+        directory, compiler, compiler_options
+    )
+    if not os.path.isfile(fname.replace(".tex", ".aux")):
+        fname = fname.split("/")[-1]
         subprocess.call(
-            compiler_command + outputname, shell=True, stdin=subprocess.DEVNULL
+            compiler_command + fname, shell=True, stdin=subprocess.DEVNULL
         )
+
+    # get the references compiled
+    input_aux = fname.replace(".tex", ".aux")
+    output_aux = outputname.replace(".tex", ".aux")
+    try:
+        with open(output_aux, "w+") as fout:
+            with open(input_aux, "r", errors="surrogateescape") as fin:
+                for line in fin:
+                    if (
+                        ("cite" in line)
+                        or ("citation" in line)
+                        or ("label" in line)
+                        or ("toc" in line)
+                    ):
+                        fout.write(
+                            line.encode("utf-8", "surrogateescape").decode(
+                                "utf-8", "replace"
+                            )
+                        )
+    except Exception:
+        pass
+
+    # compile output
+    outputname = outputname.split("/")[-1]
+    subprocess.call(
+        compiler_command + outputname, shell=True, stdin=subprocess.DEVNULL
+    )
 
 
 class ArxivAbstractHTMLParser(HTMLParser):
