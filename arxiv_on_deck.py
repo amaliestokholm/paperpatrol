@@ -200,9 +200,9 @@ def main(workplaceidstr, template=None, options=None):
     for paper in keep:
         try:
             paper.get_abstract()
-            s, pdfonly = paper.retrieve_document_source(__ROOT__ + "/tmp/")
+            s = paper.retrieve_document_source(__ROOT__ + "/tmp/")
             _identifier = paper.identifier.split(":")[-1]
-            if not pdfonly:
+            if s is not None:
                 institute_test = check_required_words(s, institute_words)
 
                 # Filtering out bad matches

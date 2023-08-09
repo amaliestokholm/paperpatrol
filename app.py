@@ -1312,10 +1312,10 @@ class ArXivPaper(object):
             tar = tarfile.open(mode="r|gz", fileobj=urlopen(where))
         except Exception as error:
             print("PDF only?")
-            return None, True
+            return None
 
         if directory is None:
-            return tar, False
+            return tar
         else:
             if os.path.isdir(directory):
                 shutil.rmtree(directory)
@@ -1343,7 +1343,7 @@ class ArXivPaper(object):
                 document.date = self.date
             else:
                 document.date = "Appeared on " + self.appearedon
-            return document, False
+            return document
 
     def get_abstract(self):
         where = ArXivPaper.abstract.format(identifier=self.identifier.split(":")[-1])
@@ -1360,7 +1360,7 @@ class ArXivPaper(object):
     def make_postage(self, template=None):
         print("Generating postage")
         self.get_abstract()
-        s, _ = self.retrieve_document_source(__ROOT__ + "/tmp")
+        s = self.retrieve_document_source(__ROOT__ + "/tmp")
         s.compile(template=template)
         identifier = self.identifier.split(":")[-1]
         name = s.outputname.replace(".tex", ".pdf").split("/")[-1]
