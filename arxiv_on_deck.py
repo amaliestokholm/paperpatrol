@@ -192,7 +192,7 @@ def main(workplaceidstr, template=None, options=None):
         keep, matched_authors = highlight_papers(papers, coworker)
 
     # make sure no duplicated papers
-    keep = {k.identifier: k for k in keep}.values()
+    keep = list({k.identifier: k for k in keep}.values())
 
     issues = []
     non_issues = []
