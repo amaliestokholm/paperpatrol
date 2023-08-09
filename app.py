@@ -1306,7 +1306,7 @@ class ArXivPaper(object):
         txt = """[{s.identifier:s}]: {s.title:s}\n\t{s.authors:s}"""
         return txt.format(s=self)
 
-    def retrieve_document_source(self, directory=None, autoselect=True):
+    def retrieve_document_source(self, directory, autoselect=True) -> DocumentSource | None:
         where = ArXivPaper.source.format(identifier=self.identifier.split(":")[-1])
         try:
             tar = tarfile.open(mode="r|gz", fileobj=urlopen(where))
@@ -1314,36 +1314,34 @@ class ArXivPaper(object):
             print("PDF only?")
             return None
 
-        if directory is None:
-            return tar
-        else:
-            if os.path.isdir(directory):
-                shutil.rmtree(directory)
-            tar.extractall(directory)
-            traceback.print_stack()
-            document = DocumentSource(directory, autoselect=autoselect)
-            self.get_abstract()
-            try:
-                document.authors
-            except Exception as error:
-                raise_or_warn(error)
-                document._authors = self.authors
-            try:
-                document.abstract
-            except Exception as error:
-                raise_or_warn(error)
-                document._abstract = self.abstract
-            document._short_authors = self.short_authors
+        assert directory is not None
+        if os.path.isdir(directory):
+            shutil.rmtree(directory)
+        tar.extractall(directory)
+        traceback.print_stack()
+        document = DocumentSource(directory, autoselect=autoselect)
+        self.get_abstract()
+        try:
+            document.authors
+        except Exception as error:
+            raise_or_warn(error)
             document._authors = self.authors
-            document._identifier = self.identifier
-            document.comment = None
-            if self.comment:
-                document.comment = self.comment.replace("\\ ", " ")
-            if self.appearedon in (None, "", "None"):
-                document.date = self.date
-            else:
-                document.date = "Appeared on " + self.appearedon
-            return document
+        try:
+            document.abstract
+        except Exception as error:
+            raise_or_warn(error)
+            document._abstract = self.abstract
+        document._short_authors = self.short_authors
+        document._authors = self.authors
+        document._identifier = self.identifier
+        document.comment = None
+        if self.comment:
+            document.comment = self.comment.replace("\\ ", " ")
+        if self.appearedon in (None, "", "None"):
+            document.date = self.date
+        else:
+            document.date = "Appeared on " + self.appearedon
+        return document
 
     def get_abstract(self):
         where = ArXivPaper.abstract.format(identifier=self.identifier.split(":")[-1])
