@@ -1119,6 +1119,26 @@ class DocumentSource(Document):
         )
 
 
+def compile_template_without_source(
+    compiler: str,
+    compiler_options: str,
+    directory: str,
+    outputname: str,
+    data: str,
+) -> None:
+    with open(outputname, "w") as out:
+        out.write(
+            data.encode("utf-8", "surrogateescape").decode("utf-8", "replace")
+        )
+    compiler_command = "cd {0:s}; {1:s} {2:s} ".format(
+        directory, compiler, compiler_options
+    )
+    outputname = outputname.split("/")[-1]
+    subprocess.call(
+        compiler_command + outputname, shell=True, stdin=subprocess.DEVNULL
+    )
+
+
 def compile_template_with_aux_from_source(
     compiler: str,
     compiler_options: str,
