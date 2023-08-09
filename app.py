@@ -7,6 +7,7 @@ A quick and dirty parser for ArXiv
 import os
 import re
 import sys
+from typing import Protocol
 
 # from __future__ import (absolute_import, division, print_function)
 import traceback
@@ -812,6 +813,14 @@ class Document(object):
         return txt.format(s=self)
 
 
+class ExportCompileTemplate(Protocol):
+    def apply_to_document(self, document: "DocumentSource") -> str:
+        ...
+
+    compiler: str
+    compiler_options: str
+
+
 class ExportPDFLatexTemplate(object):
     """default template"""
 
@@ -1093,7 +1102,7 @@ class DocumentSource(Document):
             self.fname, Document.__repr__(self)
         )
 
-    def compile(self, template=None):
+    def compile(self, template: ExportCompileTemplate | None = None):
 
         if template is None:
             template = ExportPDFLatexTemplate()
