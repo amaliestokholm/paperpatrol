@@ -923,7 +923,7 @@ class ExportPDFLatexTemplate(object):
         )
         return selection[:N]
 
-    def figure_to_latex(self, figure, size=r"0.32\textwidth"):
+    def figure_to_latex(self, figure, size=r"0.32\textwidth") -> str:
         """makes the figures in tex formatting"""
         txt = r"""\begin{minipage}{0.32\textwidth}""" + "\n"
         for fname in figure.files:
