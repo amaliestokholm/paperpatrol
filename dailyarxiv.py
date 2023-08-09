@@ -25,13 +25,15 @@ def main(place="birmingham"):
     if place == "birmingham":
         # run arxiv_on_deck for asterochronometry group
         non_issues = arxiv_on_deck.main(
-            template=arxiv_on_deck.dailyTemplate(),
-            options=dict(date=date, since=args.since, identifier=args.identifier),
+                workplaceidstr=place,
+                template=arxiv_on_deck.dailyTemplate(),
+                options=dict(date=date, since=args.since, identifier=args.identifier),
         )
     if place == "sac":
         non_issues = arxiv_on_deck.main(
-            template=arxiv_on_deck.dailyTemplate(),
-            options=dict(date=date, since=args.since, identifier=args.identifier),
+                workplaceidstr=place,
+                template=arxiv_on_deck.dailyTemplate(),
+                options=dict(date=date, since=args.since, identifier=args.identifier),
         )
         if len(non_issues) == 0:
             print("\nNo papers today")
@@ -48,8 +50,9 @@ def main(place="birmingham"):
     if place == "asterochronometry":
         # run arxiv_on_deck for asterochronometry group
         non_issues = arxiv_on_deck.main(
-            template=arxiv_on_deck.dailyTemplate(),
-            options=dict(date=date, since=args.since, identifier=args.identifier),
+                workplaceidstr=place,
+                template=arxiv_on_deck.dailyTemplate(),
+                options=dict(date=date, since=args.since, identifier=args.identifier),
         )
 
 

@@ -10,6 +10,7 @@ import time
 import inspect
 import traceback
 import app
+import institutes
 from app import (
     ExportPDFLatexTemplate,
     DocumentSource,
@@ -17,6 +18,20 @@ from app import (
     color_print,
     __DEBUG__,
 )
+from app import (
+    get_coworker,
+    filter_papers,
+    ArXivPaper,
+    highlight_papers,
+    running_options,
+    get_new_papers,
+    shutil,
+    get_catchup_papers,
+    check_required_words,
+    check_date,
+    make_qrcode,
+)
+
 
 # __ROOT__ = '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
 __ROOT__ = os.path.abspath(".")
@@ -125,24 +140,9 @@ class dailyTemplate(ExportPDFLatexTemplate):
         return txt
 
 
-def main(intemplate=None, options=None):
-    """Main function"""
-    from app import (
-        get_coworker,
-        filter_papers,
-        ArXivPaper,
-        highlight_papers,
-        running_options,
-        get_new_papers,
-        shutil,
-        get_catchup_papers,
-        check_required_words,
-        check_date,
-        make_qrcode,
-    )
-
+def main(workplaceidstr, template=None, options=None):
     if options is None:
-        options = running_options()
+        options = app.running_options()
     identifier = options.get("identifier", None)
     paper_request_test = identifier not in (None, "None", "", "none")
     hl_authors = options.get("hl_authors", None)
@@ -153,11 +153,14 @@ def main(intemplate=None, options=None):
 
     __DEBUG__ = options.get("debug", False)
 
+    workplace = institutes.Institute(workplaceidstr)
+    institute_words = workplace.institute_words
+
     if __DEBUG__:
         print("Debug mode on")
 
     if not hl_request_test:
-        coworker_list = options.get("coworker", __ROOT__ + "/coworkers.txt")
+        coworker_list = options.get("coworker", os.path.join(workplace.institutedir, "coworker.txt"))
         coworker = get_coworker(coworker_list)
     else:
         coworker = [author.strip() for author in hl_authors.split(",")]
@@ -188,11 +191,6 @@ def main(intemplate=None, options=None):
         ]
         keep, matched_authors = highlight_papers(papers, coworker)
 
-    # institute_words = ['Heidelberg', 'Max', 'Planck', '69117']
-    # institute_words = ['Stellar', 'Astrophysics', 'Centre', 'Aarhus']
-    # institute_words = ['Bologna', '40129', 'Italy']
-    institute_words = ["Birmingham", "Edgbaston"]
-
     # make sure no duplicated papers
     keep = {k.identifier: k for k in keep}.values()
 
@@ -202,29 +200,35 @@ def main(intemplate=None, options=None):
     for paper in keep:
         try:
             paper.get_abstract()
-            s = paper.retrieve_document_source(__ROOT__ + "/tmp/")
-            institute_test = check_required_words(s, institute_words)
+            s, pdfonly = paper.retrieve_document_source(__ROOT__ + "/tmp/")
             _identifier = paper.identifier.split(":")[-1]
-            # Filtering out bad matches
-            if (not institute_test) and (not paper_request_test):
-                raise RuntimeError(
-                    "Not an institute paper -- "
-                    + check_required_words(s, institute_words, verbose=True)
-                )
+            if not pdfonly:
+                institute_test = check_required_words(s, institute_words)
+
+                # Filtering out bad matches
+                if (not institute_test) and (not paper_request_test):
+                    raise RuntimeError(
+                        "Not an institute paper -- "
+                        + check_required_words(s, institute_words, verbose=True)
+                    )
+            else:
+                print('This paper is PDF only, we assume it belongs to the group')
+                paper_request_test = True
+                # Make s for pdfonly
+
+
             if paper_request_test or institute_test:
-                # Generate a QR Code
                 make_qrcode(_identifier)
                 s.compile(template=template)
                 name = s.outputname.replace(".tex", ".pdf").split("/")[-1]
-                destination = __ROOT__ + "/" + _identifier + ".pdf"
+                destination = os.path.join(__ROOT__, 'done_toprint', _identifier + ".pdf")
                 time.sleep(2)
                 shutil.move(__ROOT__ + "/tmp/" + name, destination)
                 print("PDF postage:", _identifier + ".pdf")
             else:
-                print("Not from Birmingham group... Skip.")
+                print("Not from group... Skip.")
             non_issues.append((paper.identifier, ", ".join(paper.highlight_authors)))
         except Exception as error:
-            print("bham.py main error", error)
             issues.append(
                 (paper.identifier, ", ".join(paper.highlight_authors), str(error))
             )

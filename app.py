@@ -27,7 +27,7 @@ import qrcode
 # directories
 __ROOT__ = os.path.abspath( ".")  ## '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
 tmpdir = os.path.join(__ROOT__, 'tmp')
-__DEBUG__ = True
+__DEBUG__ = False
 
 iteritems = operator.methodcaller("items")
 itervalues = operator.methodcaller("values")
@@ -733,7 +733,6 @@ class Document(object):
         if self.highlight_authors:
             incl_authors = []
             for name in self.highlight_authors:
-                print(name)
                 if name != self._authors[0]:
                     incl_authors.append(r"\hl{" + name + r"}")
             authors += "; incl. " + ", ".join(incl_authors)
@@ -1313,10 +1312,10 @@ class ArXivPaper(object):
             tar = tarfile.open(mode="r|gz", fileobj=urlopen(where))
         except Exception as error:
             print("PDF only?")
-            raise error
+            return None, True
 
         if directory is None:
-            return tar
+            return tar, False
         else:
             if os.path.isdir(directory):
                 shutil.rmtree(directory)
@@ -1344,7 +1343,7 @@ class ArXivPaper(object):
                 document.date = self.date
             else:
                 document.date = "Appeared on " + self.appearedon
-            return document
+            return document, False
 
     def get_abstract(self):
         where = ArXivPaper.abstract.format(identifier=self.identifier.split(":")[-1])
@@ -1361,7 +1360,7 @@ class ArXivPaper(object):
     def make_postage(self, template=None):
         print("Generating postage")
         self.get_abstract()
-        s = self.retrieve_document_source(__ROOT__ + "/tmp")
+        s, _ = self.retrieve_document_source(__ROOT__ + "/tmp")
         s.compile(template=template)
         identifier = self.identifier.split(":")[-1]
         name = s.outputname.replace(".tex", ".pdf").split("/")[-1]
