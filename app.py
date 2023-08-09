@@ -660,7 +660,7 @@ class Document(object):
         self._macros = get_latex_macros(self._header)
         self._title = None
         self._abstract = None
-        self._authors = None
+        self._authors: list[str] | None = None
         self._short_authors = None
         self._structure = None
         self._identifier = None
@@ -712,9 +712,9 @@ class Document(object):
         return self._title
 
     @property
-    def authors(self):
+    def authors(self) -> list[str]:
         """Document authors"""
-        if self._authors in (None, "", "None"):
+        if self._authors is None:
             # self._authors = parse_command('author', self._code)
             self._authors = parse_command_multi("author", self._code)
         return self._authors
@@ -722,21 +722,18 @@ class Document(object):
     @property
     def short_authors(self):
         """Short authors"""
-        if isinstance(self.authors, basestring):
-            authors = self.authors.split(",")
-            if len(authors) < 5:
-                return self.authors
         if self._short_authors not in (None, "", "None"):
             return self._short_authors
+        authors_list = self.authors
+        assert not isinstance(authors_list, basestring)
+        if any(name in authors_list[0] for name in self.highlight_authors):
+            authors = r"\hl{" + authors_list[0] + r"}, et al."
         else:
-            if any(name in self._authors[0] for name in self.highlight_authors):
-                authors = r"\hl{" + self._authors[0] + r"}, et al."
-            else:
-                authors = self._authors[0] + ", et al."
+            authors = authors_list[0] + ", et al."
         if self.highlight_authors:
             incl_authors = []
             for name in self.highlight_authors:
-                if name != self._authors[0]:
+                if name != authors_list[0]:
                     incl_authors.append(r"\hl{" + name + r"}")
             authors += "; incl. " + ", ".join(incl_authors)
         self._short_authors = authors
