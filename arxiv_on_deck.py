@@ -166,13 +166,13 @@ def main(workplaceidstr, template=None, options=None):
         coworker = [author.strip() for author in hl_authors.split(",")]
 
     if sourcedir not in (None, ""):
-        paper = DocumentSource(sourcedir, autoselect=(not select_main))
-        paper.identifier = sourcedir
-        keep, matched_authors = highlight_papers([paper], coworker)
-        paper.compile(template=template)
-        name = paper.outputname.replace(".tex", ".pdf").split("/")[-1]
-        shutil.move(sourcedir + "/" + name, paper.identifier + ".pdf")
-        print("PDF postage:", paper.identifier + ".pdf")
+        document_source = DocumentSource(sourcedir, autoselect=(not select_main))
+        document_source.identifier = sourcedir
+        keep, matched_authors = highlight_papers([document_source], coworker)
+        document_source.compile(template=template)
+        name = document_source.outputname.replace(".tex", ".pdf").split("/")[-1]
+        shutil.move(sourcedir + "/" + name, document_source.identifier + ".pdf")
+        print("PDF postage:", document_source.identifier + ".pdf")
         return
     elif identifier in (None, "", "None"):
         if catchup_since not in (None, "", "None", "today"):
