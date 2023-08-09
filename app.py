@@ -1458,7 +1458,7 @@ def get_coworker(source=__ROOT__ + "/coworker.txt"):
     return list(sorted(set(coworker)))
 
 
-def highlight_papers(papers, fname_list):
+def highlight_papers(papers: list[ArXivPaper], fname_list: list[str]) -> tuple[list[ArXivPaper], list[tuple[str, str, str]]]:
     """Extract papers when an author match is found
 
     Parameters
@@ -1473,8 +1473,8 @@ def highlight_papers(papers, fname_list):
     keep: list(ArXivPaper)
         papers with matching author
     """
-    keep = []
-    matched_authors = []
+    keep: list[ArXivPaper] = []
+    matched_authors: list[tuple[str, str, str]] = []
     for paper in papers:
         print(paper)
         paper.highlight_authors = []
