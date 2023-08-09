@@ -9,6 +9,8 @@ import sys
 import time
 import inspect
 import traceback
+from typing import TypedDict
+
 import app
 import institutes
 from app import (
@@ -31,12 +33,66 @@ from app import (
     check_date,
     make_qrcode,
 )
+from app import (
+    ExportCompileTemplate,
+    compile_template_with_aux_from_source,
+    compile_template_without_source,
+)
 
 
 # __ROOT__ = '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
 __ROOT__ = os.path.abspath(".")
 
-tpl = os.path.join(__ROOT__, "templates/daily.tpl")
+with open(os.path.join(__ROOT__, "templates/daily.tpl"), "r") as fp:
+    tpl = fp.read()
+
+
+def apply_pdfonly_template_to_document(paper: ArXivPaper) -> str:
+    if paper.appearedon in (None, "", "None"):
+        date = paper.date or ""
+    else:
+        date = "Appeared on " + paper.appearedon
+
+    # not sure if ArXivPaper always has abstract+authors at this point...
+    abstract = paper.abstract
+    authors = paper.short_authors
+
+    return apply_replacements(
+        tpl,
+        {
+            "macros": "",
+            "identifier": paper.identifier,
+            "title": paper.title,
+            "authors": authors,
+            "abstract": abstract,
+            "file_figure_one": "PDFONLY",
+            "figure_one": "",
+            "caption_one": "",
+            "figure_two": "",
+            "caption_two": "",
+            "figure_three": "",
+            "caption_three": "",
+            "comments": paper.comment.replace("\\ ", " "),
+            "date": date,
+        }
+    )
+
+
+class Replacements(TypedDict):
+    macros: str
+    identifier: str
+    title: str
+    authors: str
+    abstract: str
+    file_figure_one: str
+    figure_one: str
+    caption_one: str
+    figure_two: str
+    caption_two: str
+    figure_three: str
+    caption_three: str
+    comments: str
+    date: str
 
 
 class dailyTemplate(ExportPDFLatexTemplate):
@@ -44,10 +100,9 @@ class dailyTemplate(ExportPDFLatexTemplate):
     which shows 3 figures and adapt the layout depending of figure aspect ratios
     """
 
-    template = open(tpl, "r").read()
-
     compiler = "pdflatex "
     compiler_options = " -interaction=errorstopmode "
+    template = tpl
 
     def short_authors(self, document):
         """How to return short version of author list
@@ -65,7 +120,7 @@ class dailyTemplate(ExportPDFLatexTemplate):
         print(document.short_authors)
         return document.short_authors
 
-    def figure_to_latex(self, figure):
+    def figure_to_latex(self, figure) -> tuple[str, str]:
         """How to include the figures"""
         fig = ""
         for fname in figure.files:
@@ -103,44 +158,69 @@ class dailyTemplate(ExportPDFLatexTemplate):
         txt: string
             latex source of the final document
         """
-        txt = self.template.replace("<MACROS>", document._macros)
+        return apply_replacements(self.template, self.get_replacements(document))
+
+    def get_replacements(self, document) -> Replacements:
+        macros = document._macros
+        title = document.title
+        authors = self.short_authors(document)
+        abstract = document.abstract.replace(r"\n", " ")
+        comments = document.comment or ""
+        date = document.date
         if document._identifier is not None:
-            txt = txt.replace(
-                "<IDENTIFIER>",
-                r"\hl{{{0:s}}}".format(document._identifier) or "Abstract ",
-            )
+            identifier = r"\hl{{{0:s}}}".format(document._identifier) or "Abstract "
         else:
-            txt = txt.replace("<IDENTIFIER>", "Abstract ")
-        txt = txt.replace("<TITLE>", document.title)
-        txt = txt.replace("<AUTHORS>", self.short_authors(document))
-        txt = txt.replace("<ABSTRACT>", document.abstract.replace(r"\n", " "))
+            identifier = "Abstract "
 
-        for where, figure in zip(
-            "ONE TWO THREE".split(), self.select_figures(document, N=3)
-        ):
-            fig, caption = self.figure_to_latex(figure)
-            if where == "ONE":
-                special = fig.replace(
-                    r"[width=\maxwidth, height=\maxheight,keepaspectratio]", ""
-                )
-                txt = txt.replace("<FILE_FIGURE_ONE>", special)
-            fig = fig.replace(r"\\", "")
-            txt = txt.replace("<FIGURE_{0:s}>".format(where), fig)
-            txt = txt.replace("<CAPTION_{0:s}>".format(where), caption)
-        if "<CAPTION_TWO>" in txt:
-            txt = txt.replace("<FIGURE_TWO>", "")
-            txt = txt.replace("<CAPTION_TWO>", "")
-        if "<CAPTION_THREE>" in txt:
-            txt = txt.replace("<FIGURE_THREE>", "")
-            txt = txt.replace("<CAPTION_THREE>", "")
+        figures = [self.figure_to_latex(f) for f in self.select_figures(document, N=3)]
+        if len(figures) >= 1:
+            f1, c1 = figures[0]
+            f1 = f1.replace(r"\\", "")
+        else:
+            f1, c1 = "", ""
+        if len(figures) >= 2:
+            f2, c2 = figures[1]
+            f2 = f2.replace(r"\\", "")
+        else:
+            f2, c2 = "", ""
+        if len(figures) >= 3:
+            f3, c3 = figures[2]
+            f3 = f3.replace(r"\\", "")
+        else:
+            f3, c3 = "", ""
 
-        txt = txt.replace("<COMMENTS>", document.comment or "")
-        txt = txt.replace("<DATE>", document.date)
+        file_figure_one = f1.replace(
+            r"[width=\maxwidth, height=\maxheight,keepaspectratio]", ""
+        )
 
-        return txt
+        return {
+            "macros": macros,
+            "identifier": identifier,
+            "title": title,
+            "authors": authors,
+            "abstract": abstract,
+            "file_figure_one": file_figure_one,
+            "figure_one": f1,
+            "caption_one": c1,
+            "figure_two": f2,
+            "caption_two": c2,
+            "figure_three": f3,
+            "caption_three": c3,
+            "comments": comments,
+            "date": date,
+        }
 
 
-def main(workplaceidstr, template=None, options=None):
+def apply_replacements(template: str, replacements: Replacements) -> str:
+    txt = template
+    for search, replace in replacements.items():
+        txt = txt.replace("<%s>" % search.upper(), replace)
+    return txt
+
+
+def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=None):
+    if template is None:
+        template = ExportPDFLatexTemplate()
     if options is None:
         options = app.running_options()
     identifier = options.get("identifier", None)
@@ -200,7 +280,8 @@ def main(workplaceidstr, template=None, options=None):
     for paper in keep:
         try:
             paper.get_abstract()
-            s = paper.retrieve_document_source(__ROOT__ + "/tmp/")
+            directory = __ROOT__ + "/tmp/"
+            s = paper.retrieve_document_source(directory)
             _identifier = paper.identifier.split(":")[-1]
             if s is not None:
                 institute_test = check_required_words(s, institute_words)
@@ -211,23 +292,49 @@ def main(workplaceidstr, template=None, options=None):
                         "Not an institute paper -- "
                         + check_required_words(s, institute_words, verbose=True)
                     )
+
+                if paper_request_test or institute_test:
+                    make_qrcode(_identifier)
+                    outputname = s.outputname
+                    compile_template_with_aux_from_source(
+                        compiler=template.compiler,
+                        compiler_options=template.compiler_options,
+                        directory=directory,
+                        fname=s.fname,
+                        outputname=outputname,
+                        data=template.apply_to_document(s),
+                    )
+                    name = outputname.replace(".tex", ".pdf").split("/")[-1]
+                    destination = os.path.join(__ROOT__, 'done_toprint', _identifier + ".pdf")
+                    time.sleep(2)
+                    shutil.move(__ROOT__ + "/tmp/" + name, destination)
+                    print("PDF postage:", _identifier + ".pdf")
+                else:
+                    print("Not from group... Skip.")
+                non_issues.append((paper.identifier, ", ".join(paper.highlight_authors)))
             else:
+                # python3 dailyarxiv.py --identifier 2308.02253
                 print('This paper is PDF only, we assume it belongs to the group')
-                paper_request_test = True
-                # Make s for pdfonly
+                institute_test = True
 
-
-            if paper_request_test or institute_test:
-                make_qrcode(_identifier)
-                s.compile(template=template)
-                name = s.outputname.replace(".tex", ".pdf").split("/")[-1]
-                destination = os.path.join(__ROOT__, 'done_toprint', _identifier + ".pdf")
-                time.sleep(2)
-                shutil.move(__ROOT__ + "/tmp/" + name, destination)
-                print("PDF postage:", _identifier + ".pdf")
-            else:
-                print("Not from group... Skip.")
-            non_issues.append((paper.identifier, ", ".join(paper.highlight_authors)))
+                if paper_request_test or institute_test:
+                    make_qrcode(_identifier)
+                    outputname = os.path.join(directory, "arxiver.tex")
+                    compile_template_without_source(
+                        compiler=template.compiler,
+                        compiler_options=template.compiler_options,
+                        directory=directory,
+                        outputname=outputname,
+                        data=apply_pdfonly_template_to_document(paper),
+                    )
+                    name = outputname.replace(".tex", ".pdf").split("/")[-1]
+                    destination = os.path.join(__ROOT__, 'done_toprint', _identifier + ".pdf")
+                    time.sleep(2)
+                    shutil.move(__ROOT__ + "/tmp/" + name, destination)
+                    print("PDF postage:", _identifier + ".pdf")
+                else:
+                    print("Not from group... Skip.")
+                non_issues.append((paper.identifier, ", ".join(paper.highlight_authors)))
         except Exception as error:
             issues.append(
                 (paper.identifier, ", ".join(paper.highlight_authors), str(error))
