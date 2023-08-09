@@ -4,10 +4,12 @@ A quick and dirty parser for ArXiv
 
 """
 
+import datetime
 import os
 import re
 import sys
 from typing import Protocol
+import xml.etree.ElementTree as ET
 
 # from __future__ import (absolute_import, division, print_function)
 import traceback
@@ -1191,61 +1193,6 @@ def compile_template_with_aux_from_source(
     )
 
 
-class ArxivAbstractHTMLParser(HTMLParser):
-    """generates a list of Paper items by parsing the Arxiv new page"""
-
-    def __init__(self, *args, **kwargs):
-        HTMLParser.__init__(self, *args, **kwargs)
-        self.current_paper = None
-        self._paper_item = False
-        self._title_tag = False
-        self._author_tag = False
-        self._abstract_tag = False
-        self._comment_tag = False
-        self.title = None
-        self.comment = None
-        self.date = None
-        self.authors = []
-
-    def handle_starttag(self, tag, attrs):
-        if tag == "h1":
-            self._title_tag = True
-        if (tag == "a") & (len(attrs) > 0):
-            if "searchtype=author" in attrs[0][1]:
-                # if '/find/astro-ph/1/au:' in attrs[0][1]:
-                self._author_tag = True
-        if tag == "blockquote":
-            self._abstract_tag = True
-        try:
-            if tag == "td" and "tablecell comments" in attrs[0][1]:
-                self._comment_tag = True
-        except IndexError:
-            pass
-
-    def handle_endtag(self, tag):
-        if tag == "h1":
-            self._title_tag = False
-        if tag == "a":
-            self._author_tag = False
-        if tag == "blockquote":
-            self._abstract_tag = False
-
-    def handle_data(self, data):
-        if self._title_tag and ("Title:" not in data):
-            self.title = data.replace("\n", " ").strip()
-        if self._author_tag:
-            self.authors.append(data)
-        if self._abstract_tag:
-            self.abstract = data.strip()
-        if self._comment_tag:
-            # self.comment = re.escape(data.strip())
-            self.comment = tex_escape(data.strip())
-            # self.comment = data.strip()
-            self._comment_tag = False
-        if "Submitted on" in data:
-            self.date = data.strip()
-
-
 class ArxivListHTMLParser(HTMLParser):
     """generates a list of Paper items by parsing the Arxiv new page"""
 
@@ -1304,7 +1251,6 @@ class ArXivPaper(object):
     """Class that handles the interface to Arxiv website paper abstract"""
 
     source = "https://arxiv.org/e-print/{identifier}"
-    abstract = "https://arxiv.org/abs/{identifier}"
 
     def __init__(self, identifier="", highlight_authors=None, appearedon=None):
         """Initialize the data"""
@@ -1393,15 +1339,38 @@ class ArXivPaper(object):
         return document
 
     def get_abstract(self):
-        where = ArXivPaper.abstract.format(identifier=self.identifier.split(":")[-1])
-        html = urlopen(where).read().decode("utf-8")
-        parser = ArxivAbstractHTMLParser()
-        parser.feed(html)
-        self.title = parser.title
-        self._authors = parser.authors
-        self.abstract = parser.abstract
-        self.comment = parser.comment
-        self.date = parser.date
+        where = "https://export.arxiv.org/api/query?id_list={}".format(self.identifier.split(":")[-1])
+        with urlopen(where) as resp:
+            the_xml = resp.read().decode("utf-8")
+        doc = ET.fromstring(the_xml)
+        assert doc.tag == '{http://www.w3.org/2005/Atom}feed', where
+        entry = doc.find('{http://www.w3.org/2005/Atom}entry')
+        assert entry is not None, where
+        summary_tag = entry.find('{http://www.w3.org/2005/Atom}summary')
+        assert summary_tag is not None, where
+        abstract = summary_tag.text
+
+        title_tag = entry.find('{http://www.w3.org/2005/Atom}title')
+        assert title_tag is not None, where
+        title = title_tag.text or ""
+
+        author_tags = entry.findall('{http://www.w3.org/2005/Atom}author/{http://www.w3.org/2005/Atom}name')
+        authors = [t.text or "" for t in author_tags]
+
+        comment_tag = entry.find('{http://arxiv.org/schemas/atom}comment')
+        assert comment_tag is not None
+        comment = comment_tag.text or ""
+
+        published_tag = entry.find('{http://www.w3.org/2005/Atom}published')
+        assert published_tag is not None
+        assert published_tag.text
+        date_dt = datetime.datetime.fromisoformat(published_tag.text.replace("Z", "+00:00"))
+
+        self.title = title
+        self._authors = authors
+        self.abstract = abstract
+        self.comment = comment
+        self.date = date_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
         return self
 
     def make_postage(self, template=None):
