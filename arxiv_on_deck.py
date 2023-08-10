@@ -77,7 +77,7 @@ def apply_pdfonly_template_to_document(paper: ArXivPaper) -> str:
             "caption_three": "",
             "comments": paper.comment.replace("\\ ", " "),
             "date": date,
-        }
+        },
     )
 
 
@@ -242,7 +242,9 @@ def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=
         print("Debug mode on")
 
     if not hl_request_test:
-        coworker_list = options.get("coworker", os.path.join(workplace.institutedir, "coworker.txt"))
+        coworker_list = options.get(
+            "coworker", os.path.join(workplace.institutedir, "coworker.txt")
+        )
         coworker = get_coworker(coworker_list)
     else:
         coworker = [author.strip() for author in hl_authors.split(",")]
@@ -307,16 +309,20 @@ def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=
                         data=template.apply_to_document(s),
                     )
                     name = outputname.replace(".tex", ".pdf").split("/")[-1]
-                    destination = os.path.join(__ROOT__, 'done_toprint', _identifier + ".pdf")
+                    destination = os.path.join(
+                        __ROOT__, outputdir, _identifier + ".pdf"
+                    )
                     time.sleep(2)
                     shutil.move(__ROOT__ + "/tmp/" + name, destination)
                     print("PDF postage:", _identifier + ".pdf")
                 else:
                     print("Not from group... Skip.")
-                non_issues.append((paper.identifier, ", ".join(paper.highlight_authors)))
+                non_issues.append(
+                    (paper.identifier, ", ".join(paper.highlight_authors))
+                )
             else:
                 # python3 dailyarxiv.py --identifier 2308.02253
-                print('This paper is PDF only, we assume it belongs to the group')
+                print("This paper is PDF only, we assume it belongs to the group")
                 institute_test = True
 
                 if paper_request_test or institute_test:
@@ -330,13 +336,17 @@ def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=
                         data=apply_pdfonly_template_to_document(paper),
                     )
                     name = outputname.replace(".tex", ".pdf").split("/")[-1]
-                    destination = os.path.join(__ROOT__, 'done_toprint', _identifier + ".pdf")
+                    destination = os.path.join(
+                        __ROOT__, outputdir, _identifier + ".pdf"
+                    )
                     time.sleep(2)
                     shutil.move(__ROOT__ + "/tmp/" + name, destination)
                     print("PDF postage:", _identifier + ".pdf")
                 else:
                     print("Not from group... Skip.")
-                non_issues.append((paper.identifier, ", ".join(paper.highlight_authors)))
+                non_issues.append(
+                    (paper.identifier, ", ".join(paper.highlight_authors))
+                )
         except Exception as error:
             issues.append(
                 (paper.identifier, ", ".join(paper.highlight_authors), str(error))
@@ -359,4 +369,4 @@ def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=
 
 
 if __name__ == "__main__":
-    main(institute='bham', template=dailyTemplate())
+    main(institute="bham", template=dailyTemplate())
