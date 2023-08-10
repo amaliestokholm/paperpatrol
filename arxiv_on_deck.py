@@ -41,6 +41,10 @@ from app import (
 
 # __ROOT__ = '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
 __ROOT__ = os.path.abspath(".")
+outputdir = os.path.join(__ROOT__, "toprint")
+if not os.path.exists(outputdir):
+    print(f"Creates outputdir: {outputdir}")
+    os.mkdir(outputdir)
 
 with open(os.path.join(__ROOT__, "templates/daily.tpl"), "r") as fp:
     tpl = fp.read()
