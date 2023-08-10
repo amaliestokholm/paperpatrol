@@ -1314,7 +1314,6 @@ class ArXivPaper(object):
         if os.path.isdir(directory):
             shutil.rmtree(directory)
         tar.extractall(directory)
-        traceback.print_stack()
         document = DocumentSource(directory, autoselect=autoselect)
         self.get_abstract()
         try:
@@ -1359,8 +1358,11 @@ class ArXivPaper(object):
         authors = [t.text or "" for t in author_tags]
 
         comment_tag = entry.find('{http://arxiv.org/schemas/atom}comment')
-        assert comment_tag is not None
-        comment = comment_tag.text or ""
+        # assert comment_tag is not None
+        if comment_tag is None:
+            comment = ""
+        else:
+            comment = comment_tag.text or ""
 
         published_tag = entry.find('{http://www.w3.org/2005/Atom}published')
         assert published_tag is not None

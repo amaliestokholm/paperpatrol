@@ -8,7 +8,6 @@ import os
 import sys
 import time
 import inspect
-import traceback
 from typing import TypedDict
 
 import app
