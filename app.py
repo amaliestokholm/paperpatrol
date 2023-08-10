@@ -960,7 +960,7 @@ class ExportPDFLatexTemplate(object):
             [self.figure_to_latex(fig) for fig in self.select_figures(document)]
         )
         txt = txt.replace("<FIGURES>", figures)
-        txt = txt.replace("<COMMENTS>", document.comment or "")
+        txt = txt.replace("<COMMENTS>", tex_escape(document.comment) or "")
         txt = txt.replace("<DATE>", document.date)
 
         return txt
@@ -1332,6 +1332,8 @@ class ArXivPaper(object):
         document.comment = None
         if self.comment:
             document.comment = self.comment.replace("\\ ", " ")
+            document.comment = tex_escape(self.comment)
+
         if self.appearedon in (None, "", "None"):
             document.date = self.date
         else:
