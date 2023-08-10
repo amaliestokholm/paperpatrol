@@ -368,4 +368,4 @@ def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=
 
 
 if __name__ == "__main__":
-    main(institute="bham", template=dailyTemplate())
+    main(workplaceidstr="bham", template=dailyTemplate())
