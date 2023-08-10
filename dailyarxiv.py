@@ -8,9 +8,17 @@ import arxiv_on_deck
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--date")  # dd/mm/yy
-parser.add_argument("--since")  # dd/mm/yy
-parser.add_argument("--identifier")  # E.g. 2108.11780
+parser.add_argument(
+    "-d",
+    "--date",
+    help="Add a specific date to the output in the dd/mm/yy format",
+)
+parser.add_argument(
+    "-s", "--since", help="Catch-up since a specific date in dd/mm/yy format"
+)
+parser.add_argument(
+    "-i", "--identifier", help="Request a specific arXiv ID, e.g. 2108.11780"
+)
 
 
 def main(place="birmingham"):
@@ -25,15 +33,15 @@ def main(place="birmingham"):
     if place == "birmingham":
         # run arxiv_on_deck for asterochronometry group
         non_issues = arxiv_on_deck.main(
-                workplaceidstr=place,
-                template=arxiv_on_deck.dailyTemplate(),
-                options=dict(date=date, since=args.since, identifier=args.identifier),
+            workplaceidstr=place,
+            template=arxiv_on_deck.dailyTemplate(),
+            options=dict(date=date, since=args.since, identifier=args.identifier),
         )
     if place == "sac":
         non_issues = arxiv_on_deck.main(
-                workplaceidstr=place,
-                template=arxiv_on_deck.dailyTemplate(),
-                options=dict(date=date, since=args.since, identifier=args.identifier),
+            workplaceidstr=place,
+            template=arxiv_on_deck.dailyTemplate(),
+            options=dict(date=date, since=args.since, identifier=args.identifier),
         )
         if len(non_issues) == 0:
             print("\nNo papers today")
@@ -50,9 +58,9 @@ def main(place="birmingham"):
     if place == "asterochronometry":
         # run arxiv_on_deck for asterochronometry group
         non_issues = arxiv_on_deck.main(
-                workplaceidstr=place,
-                template=arxiv_on_deck.dailyTemplate(),
-                options=dict(date=date, since=args.since, identifier=args.identifier),
+            workplaceidstr=place,
+            template=arxiv_on_deck.dailyTemplate(),
+            options=dict(date=date, since=args.since, identifier=args.identifier),
         )
 
 
