@@ -1,11 +1,10 @@
-# arxiv_on_deck
-This repository is a quick and dirty version of the Arxiver.
+# depcheck daily e-print checker
+This repository is a rewrite of [arxiv_on_decka](https://mfouesneau.github.io/arxiv_on_deck_2/).
 
-The code goes through the new specific author lists and compiles a 1 page summary with figures
-A sort of Arxiver for institutes or groups
+The code goes through the new specific author lists and compiles a 1 page summary with figures.
 
-This is build specifically for the SAC and iSIMBA group at Aarhus University.
 This also contains scripts to compile the 'automated' Wordpress blogposts for isimba.dk
+
 
 ## Quick Start
 
@@ -14,7 +13,7 @@ Usage: main.py [options]
 
 Options:
   -h, --help            show this help message and exit
-  -m HL_AUTHORS, --mitarbeiter=HL_AUTHORS
+  -m HL_AUTHORS, --coworker=HL_AUTHORS
                         List of authors to highlight (co-workers)
   -i IDENTIFIER, --id=IDENTIFIER
                         Make postage of a single paper given by its arxiv id
@@ -28,11 +27,8 @@ If you don't know the ArXiver, check it there: http://arxiver.moonhats.com/
 
 The main difference comes from the additional content and output format.
 
-First, this code does not make html pages but pdfs, born during a science coffee
-at MPIA.
-
 Here is an overview of the steps the code does:
-1. Get the list of new articles on Arxiv.
+1. Get the list of new articles on arXiv.
 2. Retrieve the information on each article including title, abstract, subjects.
 3. Filter out all but selected authors (e.g., institute or group members)
 4. Download the source, hunt for information in the paper source: figures, caption and labels
@@ -48,6 +44,9 @@ or selects the most references figures throughout the text.
 
 
 ## Contributors
+* Amalie Stokholm (@amaliestokholm)
+* Mathias Rav (@mortable)
 
+For the original `arxiv_on_deck`:
 * Morgan Fouesneau (@mfouesneau)
 * Iskren Y. Georviev (@iskren-y-g)
