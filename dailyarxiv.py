@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 import arxivposts
-import depcheck
+import arxiv_on_deck
 
 
 parser = argparse.ArgumentParser()
@@ -23,16 +23,16 @@ def main(place="birmingham"):
     print("Checks arxiv")
     print(f"For date {date}")
     if place == "birmingham":
-        # run depcheck for asterochronometry group
-        non_issues = depcheck.main(
+        # run arxiv_on_deck for asterochronometry group
+        non_issues = arxiv_on_deck.main(
                 workplaceidstr=place,
-                template=depcheck.dailyTemplate(),
+                template=arxiv_on_deck.dailyTemplate(),
                 options=dict(date=date, since=args.since, identifier=args.identifier),
         )
     if place == "sac":
-        non_issues = depcheck.main(
+        non_issues = arxiv_on_deck.main(
                 workplaceidstr=place,
-                template=depcheck.dailyTemplate(),
+                template=arxiv_on_deck.dailyTemplate(),
                 options=dict(date=date, since=args.since, identifier=args.identifier),
         )
         if len(non_issues) == 0:
@@ -48,10 +48,10 @@ def main(place="birmingham"):
                         print("%s is in paper %s" % (author, pid))
                         arxivposts.main(pid)
     if place == "asterochronometry":
-        # run depcheck for asterochronometry group
-        non_issues = depcheck.main(
+        # run arxiv_on_deck for asterochronometry group
+        non_issues = arxiv_on_deck.main(
                 workplaceidstr=place,
-                template=depcheck.dailyTemplate(),
+                template=arxiv_on_deck.dailyTemplate(),
                 options=dict(date=date, since=args.since, identifier=args.identifier),
         )
 
