@@ -15,6 +15,7 @@ from app import (
     DocumentSource,
     raise_or_warn,
     color_print,
+    tex_escape,
     __DEBUG__,
 )
 from app import (
@@ -73,7 +74,7 @@ def apply_pdfonly_template_to_document(paper: ArXivPaper) -> str:
             "caption_two": "",
             "figure_three": "",
             "caption_three": "",
-            "comments": paper.comment.replace("\\ ", " "),
+            "comments": tex_escape(paper.comment.replace("\\ ", " ")),
             "date": date,
         },
     )
