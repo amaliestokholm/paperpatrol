@@ -1,8 +1,6 @@
-#!/Users/georgiev/Installs/miniconda3/bin/python
 """
 A quick and dirty parser for ArXiv
 ===================================
-
 """
 import os
 import sys
