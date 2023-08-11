@@ -336,6 +336,7 @@ def tex_escape(text):
         "\\": r"\textbackslash{}",
         "<": r"\textless{}",
         ">": r"\textgreater{}",
+        "\n": r""
     }
     regex = re.compile(
         "|".join(
@@ -1332,7 +1333,7 @@ class ArXivPaper(object):
         document.comment = None
         if self.comment:
             document.comment = self.comment.replace("\\ ", " ")
-            document.comment = tex_escape(self.comment)
+            document.comment = self.comment
 
         if self.appearedon in (None, "", "None"):
             document.date = self.date
@@ -1374,7 +1375,7 @@ class ArXivPaper(object):
         self.title = title
         self._authors = authors
         self.abstract = abstract
-        self.comment = comment
+        self.comment = tex_escape(comment)
         self.date = date_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
         return self
 
