@@ -12,7 +12,7 @@ This also contains scripts to compile the 'automated' Wordpress blogposts for is
 Usage: main.py [options]
 
 Options:
-  -h, --help            show this help message and exit
+  -h, --help            Show this help message and exit
   -m HL_AUTHORS, --coworker=HL_AUTHORS
                         List of authors to highlight (co-workers)
   -i IDENTIFIER, --id=IDENTIFIER
@@ -22,7 +22,6 @@ Options:
 ```
 
 ## What is different from the Arxiver?
-
 If you don't know the ArXiver, check it there: http://arxiver.moonhats.com/
 
 The main difference comes from the additional content and output format.
