@@ -1,4 +1,4 @@
-# arxiv\_on\_deck
+# Paper Patrol
 This repository is a rewrite of [arxiv\_on\_deck](https://mfouesneau.github.io/arxiv_on_deck_2/).
 
 The code goes through the new specific author lists and compiles a 1 page summary with figures.
