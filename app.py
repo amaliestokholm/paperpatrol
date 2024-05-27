@@ -1407,12 +1407,52 @@ def get_new_papers(skip_replacements=True, appearedon=None):
     papers: list(ArXivPaper)
         list of ArXivPaper objects
     """
-    url = "https://arxiv.org/list/astro-ph/new"
-    html = urlopen(url).read().decode("utf-8")
+    where = "https://rss.arxiv.org/atom/astro-ph"
+    with urlopen(where) as resp:
+        the_xml = resp.read().decode("utf-8")
+    doc = ET.fromstring(the_xml)
+    assert doc.tag == '{http://www.w3.org/2005/Atom}feed', doc.tag
+    entries = doc.findall('{http://www.w3.org/2005/Atom}entry')
+    assert entries
+    papers: list[ArXivPaper] = []
+    for entry in entries:
+        id_tag = entry.find('{http://www.w3.org/2005/Atom}id')
+        assert id_tag is not None, where
+        the_id = id_tag.text
+        assert the_id is not None
+        assert the_id.startswith("oai:")
+        the_id = the_id.partition("oai:")[2]
 
-    parser = ArxivListHTMLParser(skip_replacements=skip_replacements)
-    parser.feed(html)
-    papers = parser.papers
+        # summary_tag = entry.find('{http://www.w3.org/2005/Atom}summary')
+        # assert summary_tag is not None, where
+        # abstract = summary_tag.text
+
+        title_tag = entry.find('{http://www.w3.org/2005/Atom}title')
+        assert title_tag is not None, where
+        title = title_tag.text or ""
+
+        authors = entry.find('{http://purl.org/dc/elements/1.1/}creator')
+        authors_text = authors.text
+        assert authors_text is not None
+        authors = authors_text.split(", ")
+
+        # comment_tag = entry.find('{http://arxiv.org/schemas/atom}comment')
+        # if comment_tag is None:
+        #     comment = ""
+        # else:
+        #     comment = comment_tag.text or ""
+
+        # published_tag = entry.find('{http://www.w3.org/2005/Atom}published')
+        # assert published_tag is not None
+        # assert published_tag.text
+        # date_dt = datetime.datetime.fromisoformat(published_tag.text.replace("Z", "+00:00"))
+
+        paper = ArXivPaper()
+        paper.identifier = the_id
+        paper.title = title
+        for author in authors:
+            paper._authors.append(author)
+        papers.append(paper)
     return papers
 
 
