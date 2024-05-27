@@ -722,8 +722,12 @@ class Document(object):
     @property
     def title(self):
         """Document title"""
+        print(self._title)
         if self._title is None:
-            self._title = parse_command("title", self._code)
+            try:
+                self._title = parse_command("title", self._code)
+            except IndexError:
+                self._title = parse_command("Title", self._code)
         return self._title
 
     @property
