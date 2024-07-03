@@ -21,6 +21,13 @@ Options:
                         Highlight specific authors
 ```
 
+## Quick set-up
+Clone the repository. You need to edit the following files:
+* `workplaces/{your_workplace}`: In this directory, you need to make a folder named after the institute you want to check for. This `idstr` be `bham`, `mpia`, `sac` or something along those lines.
+* `workplaces/{your_workplace}/coworker.txt`: In this file you need to add the surnames of the coworkers you want to query for.
+* `institutes.py`: In the class, you need to set up your workplace. I have left my institutes in there for inspiration. In `get_institute_dir`, you need to specify the `idstr` used as the name for the `workplaces` directory. In `get_institute_words` specify the keywords that need to be present in a `.tex` file from arXiv. See the file for inspiration.
+* `dailyarxiv.py`: This is where everything is called. You need to create an `if` case for your workplace and change `place` so it runs your workplace as default.
+
 ## What is different from the Arxiver?
 If you don't know the ArXiver, check it there: http://arxiver.moonhats.com/
 
