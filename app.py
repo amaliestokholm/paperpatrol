@@ -3,7 +3,6 @@ A quick and dirty parser for ArXiv
 ===================================
 
 """
-
 import os
 import re
 import sys
@@ -22,6 +21,7 @@ import tarfile
 import shutil
 import locale
 import codecs
+import feedparser
 
 import inspect
 import qrcode
@@ -1455,7 +1455,7 @@ def get_new_papers(skip_replacements=True, appearedon=None):
     return papers
 
 
-def get_catchup_papers(since=None, skip_replacements=False, appearedon=None):
+def get_catchup_papers(since=None, skip_replacements=False, appearedon=None, category="astro-ph", max_results=200):
     """retrieve the new list from the website
     Parameters
     ----------
@@ -1471,40 +1471,64 @@ def get_catchup_papers(since=None, skip_replacements=False, appearedon=None):
     """
 
     if since is None or str(since).lower() in ("none", "today"):
-        since = date.today().strftime("%d/%m/%y")
+        since = datetime.date.today().strftime("%d/%m/%y")
 
     parsed = None
-    try:
-        # dd/mm/yy
-        parsed = datetime.strptime(since, "%d/%m/%y")
-    except ValueError:
+
+    for fmt in ("%d/%m/%y", "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
         try:
-            # Try ISO (yyyy-mm-dd)
-            parsed = datetime.strptime(since, "%Y-%m-%d")
+            parsed = datetime.datetime.strptime(since, fmt)
+            break
         except ValueError:
-            # Last resort: try yyyy/mm/dd or other delimiters
-            normalized = re.sub(r"[^0-9]", "-", since)
-            try:
-                y, m, d = normalized.split("-")[:3]
-                parsed = datetime(int(y), int(m), int(d))
-            except Exception:
-                raise ValueError(f"Unrecognized date format: {since}")
+            continue
 
-    print("Catch-up since: {parsed.strftime('%Y-%m-%d')}")
-    url = (
-        "https://arxiv.org/catchup?"
-        "syear={year:d}&smonth={month:d}&sday={day:d}"
-        "&num=1000&archive=astro-ph&method=without"
-    ).format(day=parsed.day, month=parsed.month, year=parsed.year)
+    if parsed is None:
+        normalized = re.sub(r"[^0-9]", "-", since)
+        try:
+            y, m, d = normalized.split("-")[:3]
+            parsed = datetime.datetime(int(y), int(m), int(d))
+        except Exception:
+            raise ValueError(f"Unrecognized date format: {since}")
 
+    api_url = (
+        f"http://export.arxiv.org/api/query?"
+        f"search_query=cat:{category}"
+        f"&start=0&max_results={max_results}"
+        f"&sortBy=submittedDate&sortOrder=ascending"
+    )
+
+    print(f"Catch-up since: {parsed.strftime('%Y-%m-%d')}")
+    #url = (
+    #    "https://arxiv.org/catchup?"
+    #    "syear={year:d}&smonth={month:d}&sday={day:d}"
+    #    "&num=1000&archive=astro-ph&method=without"
+    #).format(day=parsed.day, month=parsed.month, year=parsed.year)
+    feed = feedparser.parse(api_url)
+
+    papers = []
+    for entry in feed.entries:
+        # Parse published date
+        published = datetime.datetime.strptime(entry.published, "%Y-%m-%dT%H:%M:%SZ")
+        if published >= parsed:
+            paper = {
+                "identifier": entry.id.split("/abs/")[-1],
+                "title": entry.title.strip(),
+                "authors": ", ".join(a.name for a in entry.authors),
+                "abstract": entry.summary.replace("\n", " ").strip(),
+                "published": published,
+            }
+            papers.append(paper)
+
+    """
     try:
-        html = urlopen(url.read().decode("utf-8"))
+        html = urlopen(url).read().decode("utf-8")
     except Exception as e:
         raise RuntimeError("Failed to fetch arXiv catup-up page: {e}")
 
     parser = ArxivListHTMLParser(skip_replacements=skip_replacements)
     parser.feed(html)
     papers = parser.papers
+    """
 
     return papers
 

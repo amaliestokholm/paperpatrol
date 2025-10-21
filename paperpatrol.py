@@ -5,7 +5,7 @@ A quick and dirty parser for ArXiv
 import os
 import time
 from datetime import datetime
-from typing import TypedDict
+from typing import TypedDict, Any
 
 from app import (
     ExportPDFLatexTemplate,
@@ -34,6 +34,10 @@ tmpdir = os.path.join(__ROOT__, "tmp")
 
 os.makedirs(outputdir, exist_ok=True)
 os.makedirs(tmpdir, exist_ok=True)
+
+
+with open(os.path.join(__ROOT__, "templates/daily.tpl"), "r") as fp:
+    tpl = fp.read()
 
 
 def normalize_date(date_str: str | None) -> str | None:
@@ -76,7 +80,7 @@ def compile_pdf_from_source(paper, source, template):
     compile_template_with_aux_from_source(
         compiler=template.compiler,
         compiler_options=template.compiler_options,
-        directory=TMP_DIR,
+        directory=tmpdir,
         fname=source.fname,
         outputname=outputname,
         data=template.apply_to_document(source),
@@ -89,19 +93,44 @@ def compile_pdf_from_source(paper, source, template):
 def compile_pdf_only_paper(paper, template):
     identifier = paper.identifier.split(":")[-1]
     make_qrcode(identifier)
-    outputname = os.path.join(TMP_DIR, "arxiver.tex")
+    outputname = os.path.join(tmpdir, "arxiver.tex")
     from paperpatrol import apply_pdfonly_template_to_document
 
     compile_template_without_source(
         compiler=template.compiler,
         compiler_options=template.compiler_options,
-        directory=TMP_DIR,
+        directory=tmpdir,
         outputname=outputname,
         data=apply_pdfonly_template_to_document(paper),
     )
     name = os.path.basename(outputname.replace(".tex", ".pdf"))
     shutil.move(os.path.join(tmpdir, name), os.path.join(outputdir, f"{identifier}.pdf"))
     print(f"PDF (PDF-only): {identifier}.pdf")
+
+
+def process_paper(paper, template, workplace_words, paper_request_test):
+    """
+    Process a single paper and return success/failure status.
+    """
+    try:
+        paper.get_abstract()
+        source = paper.retrieve_document_source(tmpdir)
+        identifier = paper.identifier.split(":")[-1]
+
+        if source is None:
+            compile_pdf_only_paper(paper, template)
+            return True, (paper.identifier, ", ".join(paper.highlight_authors))
+
+        institute_test = check_required_words(source, workplace_words)
+        if not institute_test and not paper_request_test:
+            raise RuntimeError("Not an institute paper.")
+
+        compile_pdf_from_source(paper, source, template)
+        return True, (paper.identifier, ", ".join(paper.highlight_authors))
+
+    except Exception as err:
+        raise_or_warn(err)
+        return False, (paper.identifier, ", ".join(paper.highlight_authors), str(err))
 
 
 def apply_pdfonly_template_to_document(paper: ArXivPaper) -> str:
@@ -274,6 +303,61 @@ def apply_replacements(template: str, replacements: Replacements) -> str:
     return txt
 
 
+def main(workplaceidstr, template: ExportPDFLatexTemplate | None = None, options=None):
+    """Main entry point for paper patrol."""
+    if template is None:
+        template = ExportPDFLatexTemplate()
+    if options is None:
+        options = running_options()
+
+    __DEBUG__ = options.get("debug", False)
+    workplace = institutes.Institute(workplaceidstr)
+    workplace_words = workplace.institute_words
+
+    # Build coworker list
+    hl_authors = options.get("hl_authors")
+    if hl_authors:
+        coworkers = [a.strip() for a in hl_authors.split(",")]
+    else:
+        coworker_file = options.get("coworker", os.path.join(workplace.institutedir, "coworker.txt"))
+        coworkers = get_coworker(coworker_file)
+
+    options["coworker"] = coworkers
+
+    # Fetch papers
+    keep, matched_authors = fetch_papers(options, workplace_words)
+    keep = list({k.identifier: k for k in keep}.values())  # deduplicate
+
+    issues, non_issues = [], []
+    paper_request_test = options.get("identifier") not in (None, "", "None")
+
+    print(f"Processing {len(keep)} papers...")
+
+    for paper in keep:
+        success, result = process_paper(paper, template, workplace_words, paper_request_test)
+        (non_issues if success else issues).append(result)
+        time.sleep(2)
+
+    # Report results
+    print("\nSummary ============================")
+    if issues:
+        print("Issues:")
+        for issue in issues:
+            color_print(f"[{issue[0]}] {issue[1]} \n{issue[2]}", "red")
+
+    print("\nMatched Authors =====================")
+    for name, author, pid in matched_authors:
+        color_print(f"[{pid}] {name:10s} {author}", "green")
+
+    print("\nCompiled Outputs ====================")
+    for pid, author in non_issues:
+        color_print(f"[{pid}] {author}", "cyan")
+
+    print(f"\nDone — {len(non_issues)} papers successfully processed.\n")
+    return non_issues
+
+
+"""
 def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=None):
     if template is None:
         template = ExportPDFLatexTemplate()
@@ -296,7 +380,7 @@ def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=
         print("Debug mode on")
 
     if not hl_request_test:
-        coworker_list = options.get(
+        Gcoworker_list = options.get(
             "coworker", os.path.join(workplace.institutedir, "coworker.txt")
         )
         coworker = get_coworker(coworker_list)
@@ -407,19 +491,20 @@ def main(workplaceidstr, template: ExportCompileTemplate | None = None, options=
             )
             raise_or_warn(error, debug=__DEBUG__)
 
-    print(""" Issues =============================== """)
+    print("Issues ===============================")
     for issue in issues:
         color_print("[{0:s}] {1:s} \n {2:s}".format(*issue), "red")
 
-    print(""" Matched Authors ====================== """)
+    print("Matched Authors ======================")
     for name, author, pid in matched_authors:
         color_print("[{0:s}] {1:10s} {2:s}".format(pid, name, author), "green")
 
-    print(""" Compiled outputs ===================== """)
+    print("Compiled outputs =====================")
     for issue in non_issues:
         color_print("[{0:s}] {1:s}".format(*issue), "cyan")
 
     return non_issues
+"""
 
 
 if __name__ == "__main__":
