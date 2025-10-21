@@ -26,4 +26,3 @@ class Institute:
     def __init__(self, idstr: str):
         self.institutedir = self._get_institute_dir(idstr)
         self.institute_words = self._get_institute_words(idstr)
-

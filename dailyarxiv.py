@@ -1,67 +1,59 @@
 import argparse
-import os
-import time
 import numpy as np
-
 import arxivposts
 import paperpatrol
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-d",
-    "--date",
-    help="Add a specific date to the output in the dd/mm/yy format",
-)
-parser.add_argument(
-    "-s", "--since", help="Catch-up since a specific date in dd/mm/yy format"
-)
-parser.add_argument(
-    "-i", "--identifier", help="Request a specific arXiv ID, e.g. 2108.11780"
-)
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Check arXiv for group papers.")
+    parser.add_argument("-d", "--date", help="Specific date in dd/mm/yy format", default="today")
+    parser.add_argument("-s", "--since", help="Catch-up since date in dd/mm/yy format")
+    parser.add_argument("-i", "--identifier", help="Specific arXiv ID, e.g. 2108.11780")
+    parser.add_argument("-p", "--place", default="birmingham", help="Institution key (default: birmingham)")
+    return parser.parse_args()
 
+def run_paperpatrol(place, date, since=None, identifier=None):
+    """Run paperpatrol with the given options."""
+    print(f"\nChecking arXiv for {place.capitalize()} (Date: {date}, Since: {since or 'N/A'})")
 
-def main(place="birmingham"):
-    args = parser.parse_args()
-    if args.date is None:
-        date = "today"
+    return paperpatrol.main(
+        workplaceidstr=place,
+        template=paperpatrol.dailyTemplate(),
+        options=dict(date=date, since=since, identifier=identifier),
+    )
+
+def add_isimbablogposts(non_issues):
+    if not non_issues:
+        print("\nNo papers today.")
+        return
+
+    print("\nScience! Print the papers and show the world!")
+    try:
+        isimba_group = np.loadtxt("isimbagroup.txt", dtype=str)
+    except Exception as e:
+        print(f"Could not read isimabagroup.txt: {e}")
+        return
+
+    for pid, author in non_issues:
+        for name in author.replace(",", "").split():
+            if name in isimba_group:
+                print(f"{author} is in paper {pid}")
+                arxivposts.main(pid)
+
+def main():
+    args = parse_arguments()
+    non_issues = run_paperpatrol(
+        place=args.place.lower(),
+        date=args.date,
+        since=args.since,
+        identifier=args.identifier,
+    )
+
+    if args.place.lower() == "sac":
+        add_isimbablogposts(non_issues)
     else:
-        date = args.date
-
-    print("Checks arxiv")
-    print(f"For date {date}")
-    if place == "birmingham":
-        # run paperpatrol for asterochronometry group
-        non_issues = paperpatrol.main(
-            workplaceidstr=place,
-            template=paperpatrol.dailyTemplate(),
-            options=dict(date=date, since=args.since, identifier=args.identifier),
-        )
-    if place == "sac":
-        non_issues = paperpatrol.main(
-            workplaceidstr=place,
-            template=paperpatrol.dailyTemplate(),
-            options=dict(date=date, since=args.since, identifier=args.identifier),
-        )
-        if len(non_issues) == 0:
-            print("\nNo papers today")
-        else:
-            print("\nScience! Print the papers and show the world!")
-            isimbagroup = np.loadtxt("isimbagroup.txt", dtype="str")
-            for pid, author in non_issues:
-                for a in author.split():
-                    a = a.replace(",", "")
-                    print(a)
-                    if a in isimbagroup:
-                        print("%s is in paper %s" % (author, pid))
-                        arxivposts.main(pid)
-    if place == "asterochronometry":
-        # run paperpatrol for asterochronometry group
-        non_issues = paperpatrol.main(
-            workplaceidstr=place,
-            template=paperpatrol.dailyTemplate(),
-            options=dict(date=date, since=args.since, identifier=args.identifier),
-        )
+        print(f"\nDone for {args.place.capitalize()} — {len(non_issues)} papers found.")
 
 
 if __name__ == "__main__":

@@ -776,7 +776,7 @@ class Document(object):
         except IndexError:
             appendix_start = len(self._code)
         structure = []
-        levels = {r"\section": 0, "\subsection": 1, "\subsubsection": 2}
+        levels = {r"\section": 0, r"\subsection": 1, r"\subsubsection": 2}
         for tag in tags:
             starts = tag.span()[0]
             name = parse_command(tag.group(), self._code[starts:])
@@ -944,7 +944,7 @@ class ExportPDFLatexTemplate(object):
             + figure.caption
             + r"""}"""
         )
-        txt += "\n" + """\end{minipage}""" + "\n%\n"
+        txt += r"\n" + r"""\end{minipage}""" + r"\n%\n"
         return txt
 
     def apply_to_document(self, document):
@@ -983,7 +983,7 @@ class DocumentSource(Document):
 
         with open(fname, "r", errors="surrogateescape") as finput:
             data = finput.read()
-            if "\input" and ".tex" in data:
+            if r"\input" and ".tex" in data:
                 for input_command in ["input", "include"]:
                     data = self._expand_auxilary_files(
                         data, directory=directory, command=input_command
