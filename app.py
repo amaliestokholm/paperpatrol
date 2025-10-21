@@ -4,14 +4,13 @@ A quick and dirty parser for ArXiv
 
 """
 
-import datetime
 import os
 import re
 import sys
+import datetime
 from typing import Protocol
 import xml.etree.ElementTree as ET
 
-# from __future__ import (absolute_import, division, print_function)
 import traceback
 import operator
 from glob import glob
@@ -28,7 +27,7 @@ import inspect
 import qrcode
 
 # directories
-__ROOT__ = os.path.abspath( ".")  ## '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
+__ROOT__ = os.path.abspath( ".")
 tmpdir = os.path.join(__ROOT__, 'tmp')
 __DEBUG__ = False
 
@@ -1470,31 +1469,43 @@ def get_catchup_papers(since=None, skip_replacements=False, appearedon=None):
     papers: list(ArXivPaper)
         list of ArXivPaper objects
     """
-    from datetime import datetime, date
 
-    if since is None:
-        since = date.today().strftime("%d/%m/%y")
-    elif "today" in since.lower():
+    if since is None or str(since).lower() in ("none", "today"):
         since = date.today().strftime("%d/%m/%y")
 
+    parsed = None
     try:
         # dd/mm/yy
-        _since = datetime.strptime(since, "%d/%m/%y")
+        parsed = datetime.strptime(since, "%d/%m/%y")
     except ValueError:
-        # dd/mm/yyyy
-        _since = datetime.strptime(since, "%d/%m/%Y")
+        try:
+            # Try ISO (yyyy-mm-dd)
+            parsed = datetime.strptime(since, "%Y-%m-%d")
+        except ValueError:
+            # Last resort: try yyyy/mm/dd or other delimiters
+            normalized = re.sub(r"[^0-9]", "-", since)
+            try:
+                y, m, d = normalized.split("-")[:3]
+                parsed = datetime(int(y), int(m), int(d))
+            except Exception:
+                raise ValueError(f"Unrecognized date format: {since}")
 
-    print("after", _since)
-    url = "https://arxiv.org/catchup?syear={year:d}&smonth={month:d}&sday={day:d}&num=1000&archive=astro-ph&method=without"
-    html = (
-        urlopen(url.format(day=_since.day, month=_since.month, year=_since.year))
-        .read()
-        .decode("utf-8")
-    )
+    print("Catch-up since: {parsed.strftime('%Y-%m-%d')}")
+    url = (
+        "https://arxiv.org/catchup?"
+        "syear={year:d}&smonth={month:d}&sday={day:d}"
+        "&num=1000&archive=astro-ph&method=without"
+    ).format(day=parsed.day, month=parsed.month, year=parsed.year)
+
+    try:
+        html = urlopen(url.read().decode("utf-8"))
+    except Exception as e:
+        raise RuntimeError("Failed to fetch arXiv catup-up page: {e}")
 
     parser = ArxivListHTMLParser(skip_replacements=skip_replacements)
     parser.feed(html)
     papers = parser.papers
+
     return papers
 
 
