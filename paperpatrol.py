@@ -3,49 +3,105 @@ A quick and dirty parser for ArXiv
 ===================================
 """
 import os
-import sys
 import time
-import inspect
+from datetime import datetime
 from typing import TypedDict
 
-import app
-import institutes
 from app import (
     ExportPDFLatexTemplate,
     DocumentSource,
     raise_or_warn,
     color_print,
-    __DEBUG__,
-)
-from app import (
     get_coworker,
     filter_papers,
     ArXivPaper,
     highlight_papers,
     running_options,
     get_new_papers,
-    shutil,
     get_catchup_papers,
     check_required_words,
     check_date,
     make_qrcode,
-)
-from app import (
-    ExportCompileTemplate,
     compile_template_with_aux_from_source,
     compile_template_without_source,
 )
+import institutes
+import shutil
 
-
-# __ROOT__ = '/'.join(os.path.abspath(inspect.getfile(inspect.currentframe())).split('/')[:-1])
 __ROOT__ = os.path.abspath(".")
 outputdir = os.path.join(__ROOT__, "toprint")
-if not os.path.exists(outputdir):
-    print(f"Creates outputdir: {outputdir}")
-    os.mkdir(outputdir)
+tmpdir = os.path.join(__ROOT__, "tmp")
 
-with open(os.path.join(__ROOT__, "templates/daily.tpl"), "r") as fp:
-    tpl = fp.read()
+os.makedirs(outputdir, exist_ok=True)
+os.makedirs(tmpdir, exist_ok=True)
+
+
+def normalize_date(date_str: str | None) -> str | None:
+    if not date_str or date_str in ("None", "today"):
+        return date_str
+    try:
+        return datetime.strptime(date_str, "%d/%m/%y").strftime("%Y-%m-%d")
+    except Exception:
+        # Assume already in correct format
+        return date_str
+
+
+def fetch_papers(options: dict[str, Any], workplace_words: list[str]):
+    identifier = options.get("identifier")
+    since = normalize_date(options.get("since"))
+    date = options.get("date", "today")
+
+    if identifier:
+        papers = [
+            ArXivPaper(
+                identifier=identifier.split(":")[-1],
+                appearedon=check_date(date),
+            )
+        ]
+        keep, matched_authors = highlight_papers(papers, options.get("coworker", []))
+        return keep, matched_authors
+
+    if since not in (None, "", "None", "today"):
+        papers = get_catchup_papers(since=since, skip_replacements=True)
+    else:
+        papers = get_new_papers(skip_replacements=True, appearedon=check_date(date))
+
+    return filter_papers(papers, options.get("coworker", []))
+
+
+def compile_pdf_from_source(paper, source, template):
+    identifier = paper.identifier.split(":")[-1]
+    make_qrcode(identifier)
+    outputname = source.outputname
+    compile_template_with_aux_from_source(
+        compiler=template.compiler,
+        compiler_options=template.compiler_options,
+        directory=TMP_DIR,
+        fname=source.fname,
+        outputname=outputname,
+        data=template.apply_to_document(source),
+    )
+    name = os.path.basename(outputname.replace(".tex", ".pdf"))
+    shutil.move(os.path.join(tmpdir, name), os.path.join(outputdir, f"{identifier}.pdf"))
+    print(f"PDF generated: {identifier}.pdf")
+
+
+def compile_pdf_only_paper(paper, template):
+    identifier = paper.identifier.split(":")[-1]
+    make_qrcode(identifier)
+    outputname = os.path.join(TMP_DIR, "arxiver.tex")
+    from paperpatrol import apply_pdfonly_template_to_document
+
+    compile_template_without_source(
+        compiler=template.compiler,
+        compiler_options=template.compiler_options,
+        directory=TMP_DIR,
+        outputname=outputname,
+        data=apply_pdfonly_template_to_document(paper),
+    )
+    name = os.path.basename(outputname.replace(".tex", ".pdf"))
+    shutil.move(os.path.join(tmpdir, name), os.path.join(outputdir, f"{identifier}.pdf"))
+    print(f"PDF (PDF-only): {identifier}.pdf")
 
 
 def apply_pdfonly_template_to_document(paper: ArXivPaper) -> str:
